@@ -1,8 +1,8 @@
 """
-The Landsat collection 2 preprocessing part
+An example showing the process of creating ARD dataset from the Landsat Collection 2 Level 2
 
 Major steps:
-1. unzip the .zip file to folder 'Level2_stacking' and save he stacking file
+1. unzip the .zip file to folder 'Level2_stacking' and save the stacking file
 2. clip the stacking image to each ARD block, do not save the file
 3. clip each ARD file into each block, the block size is 250 by 250 pixels
 """
@@ -307,9 +307,6 @@ def write_finish_flag(path_and_row, image_basename):
     return None
 
 
-# outrootpath_scratch = r'/shared/cn451/Falu/LCM_diversity'
-# outrootpath_scratch = r'/scratch/zhz18039/fah20002/LCM_diversity'
-
 list_landsat_collection = ['landsat_tm_c2_l2', 'landsat_etm_c2_l2', 'landsat_ot_c2_l2']
 
 RES = 30
@@ -326,7 +323,7 @@ if __name__ == "__main__":
                         format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
     logging.info('stacking running start for {}'.format(path_and_row))
 
-    filename_zip = join(rootpath, 'data', 'Level2', 'landsat_ot_c2_l2', 'LC09_L2SP_010047_20230305_20230308_02_T1.tar')
+    filename_zip = join(rootpath, 'data', 'Level2', 'landsat_ot_c2_l2', 'LC09_L2SP_010047_20230305_20230308_02_T1.tar')  # the zip file I provided
     image_basename = os.path.split(filename_zip)[-1][0:-4]
 
     print('filename for process: {}'.format(filename_zip))
@@ -336,20 +333,7 @@ if __name__ == "__main__":
     if os.path.exists(filename_output):
         # if the stacking.tif already exists, no need to do the stacking again, just create the ARD block
         logging.info('the stacking already finished for {}'.format(image_basename))
-
-        # join(rootpath, 'data', 'Level2_stacking', path_and_row)
-
         filename_stacking_output = join(rootpath, 'data', 'Level2_stacking', path_and_row, image_basename + '_stack.tif')
-
-        # create the ARD_block
-        # start_time_blocking = time.perf_counter()
-        # create_ARD_block(filename_output, path_and_row=path_and_row, image_basename=image_basename, path_output=rootpath)
-        # end_time_blocking = time.perf_counter()
-        # logging.info('blocking running time:{}'.format(end_time_blocking - start_time_blocking))
-        #
-        # write_finish_flag(path_and_row, image_basename)
-        #
-        # logging.info('the blocking finished for {}'.format(image_basename))
 
     else:
         start_time_stacking = time.perf_counter()
