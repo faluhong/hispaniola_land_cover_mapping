@@ -22,11 +22,13 @@ from shapely.geometry.polygon import Polygon
 import logging
 
 pwd = os.getcwd()
-rootpath = os.path.abspath(os.path.join(pwd, '../..'))
+rootpath = os.path.abspath(os.path.join(pwd, '..'))
 path_pythoncode = join(rootpath, 'pythoncode')
 sys.path.append(path_pythoncode)
 
-username, password = 'falu_hong', 'University4.'  # USGS account, you can replace with your own username and password
+# USGS account, you can replace with your own username and password
+# Remember to request the access from USGU: https://ers.cr.usgs.gov/profile/access
+username, password = 'falu_hong', 'University4.'
 
 # Initialize a new API instance and get an access key
 api = API(username, password)
@@ -202,7 +204,6 @@ def redownload_failed_file(list_failed_filename, path_downloadoutput_root):
 
     return success_flag
 
-
 @click.command()
 @click.option('--i_collect', type=int, default=1, help='the landsat collection id, 1-landsat_tm_c2_l2, 2-landsat_etm_c2_l2, 3-landsat_ot_c2_l2, 4-all collections')
 @click.option('--path_and_row', type=str, default=None, help='the landsat path and row id, e.g, 008046')
@@ -215,6 +216,10 @@ def main(i_collect, path_and_row, start_date, end_date):
     path_download = join(rootpath, 'data', 'Level2')
     if not os.path.exists(path_download):
         os.makedirs(path_download)
+
+    path_logging = join(path_download, 'download_log')
+    if not os.path.exists(path_logging):
+        os.makedirs(path_logging, exist_ok=True)
 
     path_logging = join(rootpath, 'data', 'Level2', 'download_log')
 

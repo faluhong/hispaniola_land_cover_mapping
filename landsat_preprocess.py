@@ -25,61 +25,10 @@ import logging
 import pandas as pd
 
 pwd = os.getcwd()
-rootpath = os.path.abspath(os.path.join(pwd, '../..'))
+rootpath = os.path.abspath(os.path.join(pwd, '..'))
 path_data = os.path.join(rootpath, 'data', 'Level2')
 path_pythoncode = os.path.join(rootpath, 'pythoncode')
 sys.path.append(path_pythoncode)
-
-
-def get_landsat_df(path_and_row):
-    """
-        get the list of all the Landsat filenames
-        :param path_and_row
-
-    """
-    landsat_dict = {'landsat_tm_c2_l2': 0,
-                    'landsat_etm_c2_l2': 0,
-                    'landsat_ot_c2_l2': 0}
-
-    df = pd.DataFrame(columns=['index', 'zip_filename', 'image_basename'])
-
-    index = 0
-    for i_landsat, landsat_collection in enumerate(list_landsat_collection):
-        list_zipfile_temp = glob.glob(join(path_data, landsat_collection, path_and_row, '*.tar'))
-        landsat_dict[landsat_collection] = len(list_zipfile_temp)
-
-        for p_id, p in enumerate(list_zipfile_temp):
-            image_basename = os.path.split(p)[-1][0:-4]
-
-            df.loc[index, 'index'] = index
-            df.loc[index, 'zip_filename'] = p
-            df.loc[index, 'image_basename'] = image_basename
-
-            index += 1
-
-    df.set_index('index')
-
-    return df
-
-
-def df_task_obtain(df, path_and_row):
-
-    df_task = df.copy()
-
-    list_finished_filename = glob.glob(join(rootpath, 'data', 'blocking_flag', path_and_row, '*.txt'))
-    for i_file, filename in enumerate(list_finished_filename):
-
-        tmp_imagebasename = os.path.split(filename)[-1][0:-4]
-
-        if tmp_imagebasename in df['image_basename'].values:
-            index_move = df_task['index'][(df_task['image_basename'] == tmp_imagebasename)].values[0]
-            df_task = df_task.drop(index=index_move)
-
-    #         if tmp_imagebasename!=df_task.loc[index_move, 'image_basename']:
-    #             print(tmp_imagebasename)
-    #             print(index_move, df_task.loc[index_move, 'image_basename'])
-
-    return df_task
 
 
 def qabitval_array(packedint_array):
@@ -147,7 +96,7 @@ def stacking_zip_file(filename_zip, path_and_row, image_basename):
     output_directory_unzip = join(rootpath, 'data', 'unzip_temp', image_basename)
 
     if not os.path.exists(output_directory_unzip):
-        os.makedirs(output_directory_unzip)
+        os.makedirs(output_directory_unzip, exist_ok=True)
 
     with tarfile.open(filename_zip) as tar_ref:
         tar_ref.extractall(output_directory_unzip)
@@ -199,7 +148,7 @@ def stacking_zip_file(filename_zip, path_and_row, image_basename):
     # thermal band
     img_B6 = 10 * (img_B6 * 0.00341802 + 149)
 
-    ##
+    # preparation for output the stacking file
     obj_proj = gdal.Open(join(output_directory_unzip, image_basename + '_SR_B1.TIF'))
     src_proj = obj_proj.GetProjection()
     src_geotrans = obj_proj.GetGeoTransform()
@@ -239,7 +188,7 @@ def stacking_zip_file(filename_zip, path_and_row, image_basename):
 
     return output_directory_unzip, filename_output
 
-def create_ARD_block(filename_stacking_output, path_and_row, image_basename):
+def create_ARD_block(filename_stacking_output, path_and_row, image_basename, path_output):
     """
         create the block based on the stacking file, major steps include:
         (1) project the original file to the ARD projection system
@@ -250,6 +199,7 @@ def create_ARD_block(filename_stacking_output, path_and_row, image_basename):
             filename_stacking_output:
             path_and_row:
             image_basename:
+            path_output: the path to output the blocking file, such as r'/scratch/zhz18039/fah20002/LCM_diversity'
     """
 
     dst_proj = 'PROJCS["Albers_Conic_Equal_Area",GEOGCS["WGS 84",DATUM["WGS_1984",'     \
@@ -323,7 +273,7 @@ def create_ARD_block(filename_stacking_output, path_and_row, image_basename):
                             if (np.unique(img_ard_block[-1, :, :]) == 255).all() == True:
                                 pass
                             else:
-                                output_folder_ARD_block = join(outrootpath_scratch, 'data', 'ARD_block', tilename, block_id)
+                                output_folder_ARD_block = join(path_output, 'data', 'ARD_block', tilename, block_id)
                                 if not os.path.exists(output_folder_ARD_block):
                                     os.makedirs(output_folder_ARD_block)
 
@@ -346,10 +296,10 @@ def write_finish_flag(path_and_row, image_basename):
             image_basename
     """
 
-    outputfolder_blockflag = join(rootpath, 'data', 'blocking_flag', path_and_row)
-    if not os.path.exists(outputfolder_blockflag):
-        os.makedirs(outputfolder_blockflag, exist_ok=True)
-    filaname_blockflag = join(outputfolder_blockflag, '{}.txt'.format(image_basename))
+    output_folder_blocking_flag = join(rootpath, 'data', 'blocking_flag', path_and_row)
+    if not os.path.exists(output_folder_blocking_flag):
+        os.makedirs(output_folder_blocking_flag, exist_ok=True)
+    filaname_blockflag = join(output_folder_blocking_flag, '{}.txt'.format(image_basename))
     f = open(filaname_blockflag, 'w')
     f.write('{} blocking finished'.format(image_basename))
     f.close()
@@ -358,101 +308,68 @@ def write_finish_flag(path_and_row, image_basename):
 
 
 # outrootpath_scratch = r'/shared/cn451/Falu/LCM_diversity'
-outrootpath_scratch = r'/scratch/zhz18039/fah20002/LCM_diversity'
+# outrootpath_scratch = r'/scratch/zhz18039/fah20002/LCM_diversity'
+
 list_landsat_collection = ['landsat_tm_c2_l2', 'landsat_etm_c2_l2', 'landsat_ot_c2_l2']
 
 RES = 30
 NRow, NCol = 2500, 2500
 Block_Size = 250
 
-@click.command()
-@click.option('--path_and_row', type=str, default=None, help='path and and row')
-@click.option('--rank', type=int, default=0, help='job array id, e.g., 1-200')
-@click.option('--n_cores', type=int, default=1, help='the total applied cores   $SLURM_ARRAY_TASK_MAX')
-
-def main(path_and_row, rank, n_cores):
-
+# def main():
+if __name__ == "__main__":
+    path_and_row = '010047'
+    path_output = rootpath
 
     logging.basicConfig(filename=join(pwd, '{}.log'.format(path_and_row)),
                         level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
-    logging.info('rank {}: stacking running start for {}'.format(rank, path_and_row))
+    logging.info('stacking running start for {}'.format(path_and_row))
 
-    df_all = get_landsat_df(path_and_row)
-    df_task = df_task_obtain(df_all, path_and_row)
+    filename_zip = join(rootpath, 'data', 'Level2', 'landsat_ot_c2_l2', 'LC09_L2SP_010047_20230305_20230308_02_T1.tar')
+    image_basename = os.path.split(filename_zip)[-1][0:-4]
 
-    iteration_flag = 0
-    while len(df_task)!=0:
+    print('filename for process: {}'.format(filename_zip))
+    logging.info('filename for process: {}'.format(image_basename))
 
-        df_task = df_task_obtain(df_all, path_and_row)
+    filename_output = join(rootpath, 'data', 'Level2_stacking', path_and_row, '{}_stack.tif'.format(image_basename))
+    if os.path.exists(filename_output):
+        # if the stacking.tif already exists, no need to do the stacking again, just create the ARD block
+        logging.info('the stacking already finished for {}'.format(image_basename))
 
-        # each core
-        num_total_landsat = len(df_task)
-        each_core_imagenum = int(np.ceil(num_total_landsat/n_cores))
+        # join(rootpath, 'data', 'Level2_stacking', path_and_row)
 
-        for i in range(0,each_core_imagenum):
+        filename_stacking_output = join(rootpath, 'data', 'Level2_stacking', path_and_row, image_basename + '_stack.tif')
 
-            new_rank = rank - 1 + i*n_cores
-            print(new_rank)
-            if new_rank > num_total_landsat -1: # means that all folder has been processed
-                print('this is the last running task')
-                break
+        # create the ARD_block
+        # start_time_blocking = time.perf_counter()
+        # create_ARD_block(filename_output, path_and_row=path_and_row, image_basename=image_basename, path_output=rootpath)
+        # end_time_blocking = time.perf_counter()
+        # logging.info('blocking running time:{}'.format(end_time_blocking - start_time_blocking))
+        #
+        # write_finish_flag(path_and_row, image_basename)
+        #
+        # logging.info('the blocking finished for {}'.format(image_basename))
 
-            filename_zip = df_task.loc[df_task.iloc[new_rank]['index'], 'zip_filename']
-            image_basename = df_task.loc[df_task.iloc[new_rank]['index'], 'image_basename']
+    else:
+        start_time_stacking = time.perf_counter()
+        path_temp_zip, filename_stacking_output = stacking_zip_file(filename_zip=filename_zip,
+                                                                    path_and_row=path_and_row,
+                                                                    image_basename=image_basename)
+        end_time_stacking = time.perf_counter()
+        logging.info('stacking running time:{}'.format(end_time_stacking-start_time_stacking))
 
-            print('filename for process: {}'.format(filename_zip))
-            logging.info('rank {}: filename for process: {}'.format(rank, image_basename))
+        # delete the unzip folder
+        shutil.rmtree(path_temp_zip, ignore_errors=True)
+        logging.info('the stacking finished for {}'.format(image_basename))
 
-            filename_output = join(rootpath, 'data', 'Level2_stacking', path_and_row, '{}_stack.tif'.format(image_basename))
-            if os.path.exists(filename_output):
-                print('the stacking already finished for {}'.format(filename_output))
-                logging.info('rank {}: the stacking already finished for {}'.format(rank, image_basename))
+    # create the ARD_block
+    start_time_blocking = time.perf_counter()
+    create_ARD_block(filename_stacking_output, path_and_row=path_and_row,image_basename=image_basename,
+                     path_output=rootpath)
+    end_time_blocking = time.perf_counter()
+    logging.info('blocking running time:{}'.format(end_time_blocking - start_time_blocking))
 
-                # create the ARD_block
-                starttime_blocking = time.perf_counter()
-                create_ARD_block(filename_output, path_and_row=path_and_row, image_basename=image_basename)
-                endtime_blocking = time.perf_counter()
-                logging.info('blocking running time:{}'.format(endtime_blocking - starttime_blocking))
+    write_finish_flag(path_and_row, image_basename)
 
-                write_finish_flag(path_and_row, image_basename)
-
-                logging.info('rank {}: the blocking finished for {}'.format(rank, image_basename))
-
-            else:
-                starttime_stacking = time.perf_counter()
-                path_temp_zip, filename_stacking_output = stacking_zip_file(filename_zip=filename_zip,
-                                                                            path_and_row=path_and_row,
-                                                                            image_basename=image_basename)
-                endtime_stacking = time.perf_counter()
-                logging.info('stacking running time:{}'.format(endtime_stacking-starttime_stacking))
-
-                # delete the unzip folder
-                shutil.rmtree(path_temp_zip, ignore_errors=True)
-                logging.info('rank {}: the stacking finished for {}'.format(rank, image_basename))
-
-                # create the ARD_block
-                starttime_blocking = time.perf_counter()
-                create_ARD_block(filename_stacking_output, path_and_row=path_and_row,image_basename=image_basename)
-                endtime_blocking = time.perf_counter()
-                logging.info('blocking running time:{}'.format(endtime_blocking - starttime_blocking))
-
-                write_finish_flag(path_and_row, image_basename)
-
-                logging.info('rank {}: the blocking finished for {}'.format(rank, image_basename))
-
-        if iteration_flag <= 10:
-            pass
-        else:
-            logging.info('rank {}: exceed the maximum iteration round, length of dt_task {}'.format(rank, len(df_task)))
-            break
-
-        iteration_flag+=1
-
-    logging.info('rank {}: all task has been done, length of dt_task {}'.format(rank, len(df_task)))
-
-
-
-if __name__ == "__main__":
-    main()
-
+    logging.info('the blocking finished for {}'.format(image_basename))
