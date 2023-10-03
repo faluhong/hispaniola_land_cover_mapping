@@ -13,12 +13,12 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import json as js
 from osgeo import gdal, gdal_array, gdalconst
-import sklearn
-from sklearn.ensemble import RandomForestClassifier
 import matplotlib
 import heapq
 import fiona
 import logging
+import seaborn as sns
+import matplotlib.patches as mpatches
 
 pwd = os.getcwd()
 rootpath = os.path.abspath(os.path.join(pwd, '..'))
@@ -422,6 +422,44 @@ def img_lcmap_block_acquire(output_path, tilename, blockname):
     return img_output_lcmap
 
 
+def landcover_merge(img_lcmap_fill):
+    """
+        merge the secondary wet and dry forest to secondary forest
+        Ten types land cover:
+        1 -> Developed
+        2 -> Barren
+        3 -> Primary wet forest
+        4 -> Primary dry forest
+        5 -> Secondary wet forest
+        6 -> Secondary dry forest
+        7 -> Shrub/Grass
+        8 -> Cropland
+        9 -> Water
+        10 -> Wetland
+
+        After merging, nine land cver types
+        1 -> Developed
+        2 -> Barren
+        3 -> Primary wet forest
+        4 -> Primary dry forest
+        5 -> Secondary forest
+        6 -> Shrub/Grass
+        7 -> Cropland
+        8 -> Water
+        9 -> Wetland
+    """
+
+    img_lcmap_merge = img_lcmap_fill.copy()
+
+    img_lcmap_merge[(img_lcmap_merge == 5) | (img_lcmap_merge == 6)] = 5
+    img_lcmap_merge[img_lcmap_merge == 7] = 6
+    img_lcmap_merge[img_lcmap_merge == 8] = 7
+    img_lcmap_merge[img_lcmap_merge == 9] = 8
+    img_lcmap_merge[img_lcmap_merge == 10] = 9
+
+    return img_lcmap_merge
+
+
 def landcover_fill(img_lcmap_output):
     """
         fill the land cover gap in the time series to ensure the consistent land cover map from 1984 to 2022,
@@ -494,10 +532,91 @@ def landcover_output(img_lcmap_fill, tilename, blockname, src_geotrans, src_proj
     tif_output = None
 
 
+def land_cover_plot(img_plot, title='', figsize=(16, 9.5), landcover_system=None, colors=None, ticks_flag=False):
+    """
+        plot the land cover
+    Args:
+        img_plot:
+        title:
+        figsize:
+        landcover_system: dictionary to record the land cover system
+        colors: colors for each land cover type
+        ticks_flag: flag to determine whether to show the ticks, default is False
+    Returns:
+
+    """
+    sns.set_style("white")
+    if landcover_system is None:
+        landcover_system = {'1': 'Developed',
+                            '2': 'Barren',
+                            '3': 'PrimaryWetForest',
+                            '4': 'PrimaryDryForest',
+                            '5': 'SecondaryForest',
+                            '6': 'ShrubGrass',
+                            '7': 'Cropland',
+                            '8': 'Water',
+                            '9': 'Wetland'}
+
+        colors = np.array([np.array([241, 1, 0, 255]) / 255,
+                           np.array([179, 175, 164, 255]) / 255,
+                           np.array([29, 101, 51, 255]) / 255,
+                           np.array([244, 127, 17, 255]) / 255,
+                           np.array([108, 169, 102, 255]) / 255,
+                           np.array([208, 209, 129, 255]) / 255,
+                           np.array([174, 114, 41, 255]) / 255,
+                           np.array([72, 109, 162, 255]) / 255,
+                           np.array([200, 230, 248, 255]) / 255
+                           ])
+
+    vmin, vmax = 1, len(landcover_system)
+
+    img = img_plot.copy()
+    img = img.astype(float)
+    img[img < vmin] = np.nan
+    img[img > vmax] = np.nan
+
+    unique_landcover = np.unique(img)[~np.isnan(np.unique(img))]
+    unique_landcover = (unique_landcover).astype(int)
+
+    title_legend = []
+    mask_color = np.zeros(len(colors), dtype=bool)
+    for p in unique_landcover:
+        mask_color[p - 1] = True
+        title_legend.append('{} {}'.format(p, landcover_system[str(p)]))
+    colors_plot = colors[mask_color]
+
+    labelsize = 20
+    title_label_size = 24
+    ticklength = 6
+    axes_linewidth = 1.5
+    legend_size = 16
+
+    fig, axes = plt.subplots(ncols=1, nrows=1, figsize=figsize)
+
+    matplotlib.rcParams['axes.linewidth'] = axes_linewidth
+    for i in axes.spines.values():
+        i.set_linewidth(axes_linewidth)
+
+    cmap = matplotlib.colors.ListedColormap(colors)
+    boundaries = np.arange(1, len(landcover_system) + 2)
+    norm = matplotlib.colors.BoundaryNorm(boundaries, cmap.N, clip=True)
+    im = axes.imshow(img, cmap=cmap, norm=norm, interpolation='nearest')
+
+    axes.tick_params('x', labelsize=labelsize, direction='out', length=ticklength, width=axes_linewidth, bottom=ticks_flag, labelbottom=ticks_flag, which='major')
+    axes.tick_params('y', labelsize=labelsize, direction='out', length=ticklength, width=axes_linewidth, left=ticks_flag, labelleft=ticks_flag, which='major')
+
+    patches = [mpatches.Patch(color=colors_plot[i], label=title_legend[i]) for i in range(0, len(colors_plot))]
+    plt.legend(handles=patches, bbox_to_anchor=(1, 0.92, 0.1, 0.1), loc='upper left', borderaxespad=0.5, fontsize=legend_size)
+
+    plt.title(title, fontsize=title_label_size, pad=1.5)
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
 
     post_processing_flag = 0
-    irf_version_flag = 'v1'
+    landcover_version = 'v2'
     tilename = 'h05v02'
 
     # list_blockname = ['row1000col0000', 'row1000col0250', 'row1000col0500',
@@ -513,18 +632,18 @@ if __name__ == "__main__":
     else:
         post_processing_des = None
 
-    output_rootpath = get_output_rootpath(irf_version_flag)  # get the root output directory
-    output_path = get_output_path(irf_version_flag, tilename)  # get the output path for the tile
+    output_rootpath = get_output_rootpath(landcover_version)  # get the root output directory
+    output_path = get_output_path(landcover_version, tilename)  # get the output path for the tile
 
     src_geotrans, src_proj = get_projection_info(tilename)
 
-    logging.basicConfig(filename=join(output_rootpath, '{}.log'.format(irf_version_flag)),
+    logging.basicConfig(filename=join(output_rootpath, '{}.log'.format(landcover_version)),
                         level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 
-    logging.info('calibration version {}'.format(irf_version_flag))
+    logging.info('calibration version {}'.format(landcover_version))
     logging.info('post processing rule: {} {}'.format(post_processing_flag, post_processing_des))
-    logging.info('land cover output version {}'.format(irf_version_flag))
+    logging.info('land cover output version {}'.format(landcover_version))
 
     # read pre-trained random forest classifier
     output_name_rf = join(rootpath, 'data', 'random_forest_model', 'rf_classifier_i01.joblib')
@@ -545,7 +664,12 @@ if __name__ == "__main__":
     # fill the missing values
     img_lcmap_fill = landcover_fill(img_lcmap_eachblock)
 
-    # output the land cover map
-    landcover_output(img_lcmap_fill, tilename, blockname, src_geotrans, src_proj, output_path)
+    # merge secondary wet and secondary dry forests to secondary forest
+    img_lcmap_merge = landcover_merge(img_lcmap_fill)
 
+    # output the land cover map
+    landcover_output(img_lcmap_merge, tilename, blockname, src_geotrans, src_proj, output_path)
+
+    # plot the land cover
+    land_cover_plot(img_lcmap_merge[-1], title='land cover in 2022')
 
