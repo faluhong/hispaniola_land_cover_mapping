@@ -1,18 +1,6 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 """
-using the saved random forest model to conduct the land cover classification
-
-version 4 updates:
-(1) dem, aspect, slope info were incorporate:
-(2) once change is detected, the pixel won't be classified as primary forest and will be replaced with the second
-    probability
-(3) for developed pixel, once it is classified as developed, it will keep at developed even if change is detected
-
-Args:
-    irf_version_flag: the iterative random forest version flag
-
+    conduct the land cover classification in parallel mode in HPC
+    The basic idea is conducting the classification for each block in parallel mode. After all blocks are classified, merge the land cover and output
 """
 
 import time
@@ -36,7 +24,7 @@ import logging
 from scipy.ndimage import label, generate_binary_structure
 
 pwd = os.getcwd()
-rootpath = os.path.abspath(os.path.join(pwd, '../..'))
+rootpath = os.path.abspath(os.path.join(pwd, '..'))
 path_pythoncode = join(rootpath, 'pythoncode')
 sys.path.append(path_pythoncode)
 
@@ -240,12 +228,14 @@ def mosaic_output(landcover_version, src_geotrans, dst_proj, img_lcmap, year):
 
     del tif_sat_temp
 
+
 @click.command()
 @click.option('--rank', type=int, default=0, help='rank  $SLURM_ARRAY_TASK_ID')
 @click.option('--n_cores', type=int, default=1, help='the total applied cores   $SLURM_ARRAY_TASK_MAX')
 @click.option('--landcover_version', type=str, default='v1', help='output path version flag')
 @click.option('--post_processing_flag', type=int, default=1, help='output path version flag')
 def main(rank, n_cores, landcover_version, post_processing_flag):
+
     if post_processing_flag == 0:
         post_processing_des = 'No rule applied'
     elif post_processing_flag == 1:
@@ -261,7 +251,7 @@ def main(rank, n_cores, landcover_version, post_processing_flag):
     logging.info('post processing rule: {} {}'.format(post_processing_flag, post_processing_des))
     logging.info('land cover output version {}'.format(landcover_version))
 
-    finished_txt = join(output_rootpath, 'land_cover_classification_finished.txt')   # .txt file to indicate the classification for each block is done
+    finished_txt = join(output_rootpath, 'land_cover_classification_finished.txt')  # .txt file to indicate the classification for each block is done
 
     if rank == 1:  # the first rank is used for merge and output
         while not os.path.exists(finished_txt):  # if
@@ -306,7 +296,6 @@ def main(rank, n_cores, landcover_version, post_processing_flag):
 
             for i in range(0, each_core_task):
                 new_rank = rank - (offset_flag + 1) + i * (n_cores - offset_flag)
-                print(new_rank)
                 if new_rank > count_block - 1:  # means that all folder has been processed
                     print('this is the last running task')
                     break
@@ -314,6 +303,8 @@ def main(rank, n_cores, landcover_version, post_processing_flag):
                 # land cover classification for single block
                 tilename = df_task.loc[new_rank, 'tilename']
                 blockname = df_task.loc[new_rank, 'blockname']
+
+                logging.info('rank {}: classification for tile {} block {}'.format(new_rank, tilename, blockname))
 
                 # read the projection information
                 dst_geotrans, src_proj = get_projection_info(tilename)
