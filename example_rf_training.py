@@ -1,5 +1,5 @@
 """
-    prepare the training data from COLD reccg
+    example of random forest model training
 """
 
 import time
@@ -8,21 +8,10 @@ import numpy as np
 import os
 from os.path import join
 import sys
-import glob
 import pandas as pd
 from datetime import datetime
-import matplotlib.pyplot as plt
-import json as js
-import click
-from osgeo import gdal, gdal_array, gdalconst
-import sklearn
 from sklearn.ensemble import RandomForestClassifier
-import heapq
-import click
-import fiona
-import logging
-import warnings
-warnings.filterwarnings("ignore")
+
 
 pwd = os.getcwd()
 rootpath = os.path.abspath(os.path.join(pwd, '..'))
