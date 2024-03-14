@@ -33,7 +33,6 @@ def rf_training(x_trainingdata, y_trainingdata):
     return rf_classifier
 
 
-# def main():
 if __name__ == "__main__":
 
     # load the training data.
