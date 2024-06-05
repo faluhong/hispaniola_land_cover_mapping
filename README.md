@@ -1,1 +1,1 @@
-# Land cover workflow in the Island of Hispaniola
+# Workflow of land cover mapping on the Island of Hispaniola
