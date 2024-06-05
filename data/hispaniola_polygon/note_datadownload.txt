@@ -1,0 +1,1 @@
+You can get the adminstrative boundary for each country throught https://gadm.org/
