@@ -5,7 +5,7 @@ Dataset are available to download at:
 
 Interactive maps are available at Google Earth Engine APP to view the land cover map: https://gers.users.earthengine.app/view/hispaniola-lc
 
-![img.png](image/GEE_ui.png)
+[![img.png](image/GEE_ui.png)](https://gers.users.earthengine.app/view/hispaniola-lc)
 
 Please cite the following paper if you use the dataset or the code:
 
