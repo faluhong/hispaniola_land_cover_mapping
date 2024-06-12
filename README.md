@@ -5,6 +5,8 @@ Dataset are available to download at:
 
 Interactive maps are available at Google Earth Engine APP to view the land cover map: https://gers.users.earthengine.app/view/hispaniola-lc
 
+![img.png](img.png)
+
 Please cite the following paper if you use the dataset or the code:
 
 Falu Hong, S. Blair Hedges, Zhiqiang Yang, Ji Won Suh, Shi Qiu, Joel Timyan, and Zhe Zhu. Tracking mangrove condition changes using dense Landsat time series (Under Review).
