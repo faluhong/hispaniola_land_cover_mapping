@@ -1,5 +1,5 @@
 """
-    generate the validation matrix recommended by Olofsson et al. (2014) following the "Good Practice" strategy
+    generate the accuracy_assessment matrix recommended by Olofsson et al. (2014) following the "Good Practice" strategy
 """
 
 import time
@@ -89,7 +89,7 @@ def get_lc_weight(landcover_version):
 def generate_good_practice_matrix(data, array_weight, array_count, confidence_interval=1.96):
     """
         generate the error matrix following the "Good Practice" strategy
-        The validation sample design follows the stratified random sample
+        The accuracy_assessment sample design follows the stratified random sample
 
         Steps:
         (1) calculate the proportion of area for each cell
@@ -217,7 +217,7 @@ if __name__=='__main__':
 
     array_weight, array_count = get_lc_weight(landcover_version)
 
-    filename_validation = join(rootpath, 'results', 'validation', landcover_version, 'validation_sample_v1_record.xlsx')
+    filename_validation = join(rootpath, 'results', 'accuracy_assessment', landcover_version, 'validation_sample_v1_record.xlsx')
     sheet_validation = pd.read_excel(filename_validation)
     sheet_validation = sheet_validation[~np.isnan(sheet_validation['pri_lc'])]
 
@@ -238,14 +238,14 @@ if __name__=='__main__':
     print('overall accuracy is {}'.format(df_err_adjust.loc['PA', 'UA']))
 
     ## output the error adjust file
-    # output_filename = join(rootpath, 'results', 'validation', landcover_version, 'adjust_validation_matrix.xlsx')
+    # output_filename = join(rootpath, 'results', 'accuracy_assessment', landcover_version, 'adjust_validation_matrix.xlsx')
     # output_excel = pd.ExcelWriter(output_filename)
     #
     # df_confusion.to_excel(output_excel, sheet_name='pixel_count')
     # df_err_adjust.to_excel(output_excel, sheet_name='error_adjust')
     #
     # output_excel.close()
-    ## plot the validation confusion matrix
+    ## plot the accuracy_assessment confusion matrix
     # from pretty_confusion_matrix import pp_matrix
     #
     # df_cm = pd.DataFrame(array, index=landcover_system.values(), columns=landcover_system.values())

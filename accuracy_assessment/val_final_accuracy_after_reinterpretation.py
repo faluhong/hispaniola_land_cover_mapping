@@ -1,5 +1,5 @@
 """
-    Report the land cover and PF loss validation results after the re-interpretation and group discussion
+    Report the land cover and PF loss accuracy_assessment results after the re-interpretation and group discussion
 """
 
 import time
@@ -23,16 +23,16 @@ rootpath = os.path.abspath(os.path.join(pwd, '../..'))
 path_pythoncode = join(rootpath, 'pythoncode')
 sys.path.append(path_pythoncode)
 
-from validation.generate_validation_sample_pf_loss import get_pf_loss_map
-from validation.val_report_mutual_pf_loss_sample import validation_pf_loss_summary
-from validation.validation_matrix import plot_df_confusion
-from validation.calulate_validation_report_land_cover import get_count_weight_merge_barren_cropland
-from validation.val_report_first_round_lc import summary_accuracy_evaluation
+from accuracy_assessment.generate_validation_sample_pf_loss import get_pf_loss_map
+from accuracy_assessment.val_report_mutual_pf_loss_sample import validation_pf_loss_summary
+from accuracy_assessment.validation_matrix import plot_df_confusion
+from accuracy_assessment.calulate_validation_report_land_cover import get_count_weight_merge_barren_cropland
+from accuracy_assessment.val_report_first_round_lc import summary_accuracy_evaluation
 
 
 def prepare_pf_loss_data():
     """
-        Prepare the PF loss validation data, including
+        Prepare the PF loss accuracy_assessment data, including
         (1) The weight and count of PF loss and Non PF loss types
         (2) The PF loss map
         (3) The first-round interpretation results
@@ -43,7 +43,7 @@ def prepare_pf_loss_data():
                     '2': 'PF loss'}
     reverse_validation_system = {v: int(k) for k, v in pf_loss_dict.items()}
 
-    path_validation = join(rootpath, 'results', 'validation', 'degrade_v2_refine_3_3_separate_validation','pf_loss_final_sample')
+    path_validation = join(rootpath, 'results', 'accuracy_assessment', 'degrade_v2_refine_3_3_separate_validation','pf_loss_final_sample')
 
     change_map_pf_loss = get_pf_loss_map(landcover_version='degrade_v2_refine_3_3')
 
@@ -70,7 +70,7 @@ def prepare_pf_loss_data():
 
 def prepare_lc_map_data():
     """
-        Prepare the land cover validation data, including
+        Prepare the land cover accuracy_assessment data, including
         (1) The weight and count of each land cover type
         (2) The land cover map results
         (3) The first-round interpretation results
@@ -81,7 +81,7 @@ def prepare_lc_map_data():
 
     array_count_merge_barren_cropland, array_weight_merge_barren_cropland = get_count_weight_merge_barren_cropland(landcover_version='degrade_v2_refine_3_3')
 
-    path_validation = join(rootpath, 'results', 'validation', 'degrade_v2_refine_3_3_separate_validation', 'lc_final_sample')
+    path_validation = join(rootpath, 'results', 'accuracy_assessment', 'degrade_v2_refine_3_3_separate_validation', 'lc_final_sample')
 
     # read the spreadsheet including the land cover classification results
     filename_lc_map = join(path_validation, f'validation_lc_400_python_output_fixed_for_share.xlsx')
@@ -90,7 +90,7 @@ def prepare_lc_map_data():
     array_lc_map = sheet_lc_map['map_type'].values
     array_lc_map = np.array([reverse_validation_system.get(i, -999) for i in array_lc_map])
 
-    path_validation = join(rootpath, 'results', 'validation', 'degrade_v2_refine_3_3_separate_validation', 'lc_final_sample')
+    path_validation = join(rootpath, 'results', 'accuracy_assessment', 'degrade_v2_refine_3_3_separate_validation', 'lc_final_sample')
 
     filename_validation = join(path_validation, 'collection_v2_validation_lc_400samples.xlsx')
     df_interpretation = pd.read_excel(filename_validation, sheet_name='validation_record')
@@ -128,7 +128,7 @@ if __name__ == '__main__':
 
     ##
 
-    filename_collection = join(rootpath, 'results', 'validation', 'degrade_v2_refine_3_3_separate_validation',
+    filename_collection = join(rootpath, 'results', 'accuracy_assessment', 'degrade_v2_refine_3_3_separate_validation',
                                're_interpretation_sample',
                                'Collection_re_interpretation_sample.xlsx')
 
