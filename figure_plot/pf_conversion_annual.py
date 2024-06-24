@@ -10,8 +10,6 @@ import pandas as pd
 import matplotlib.ticker as plticker
 import seaborn as sns
 import os
-import sys
-from osgeo import gdal, gdal_array, gdalconst
 
 
 def plot_pf_annual_conversion_stacked(df_pf_lc_count, plot_type='single',
@@ -124,7 +122,7 @@ def get_pf_annual_conversion_data(df_analysis, change_matrix):
     return df_pf_lc_count
 
 
-def get_conversion_info(country_flag):
+def get_conversion_info(country_flag, rootpath):
     """
         get the conversion information for the primary forest
         Args:
@@ -132,8 +130,7 @@ def get_conversion_info(country_flag):
             country_flag: str, the country flag, 'dr', 'haiti', 'hispaniola'
     """
     # read the change matrix
-    filename_change_matrix = join(rootpath, 'results', 'change_matrix',
-                                  '{}_adjacent_matrix.npy'.format(country_flag))
+    filename_change_matrix = join(rootpath, 'results', 'change_matrix', '{}_adjacent_matrix.npy'.format(country_flag))
     change_matrix = np.load(filename_change_matrix)
 
     filename_lc_count = join(rootpath, 'results', 'land_cover_pct.xlsx')
@@ -151,26 +148,22 @@ def get_conversion_info(country_flag):
 
     df_pf_lc_count = get_pf_annual_conversion_data(df_analysis, change_matrix)   # get the PF annual conversion count
 
-    values_plot_individual = df_pf_lc_count.iloc[:, 2::].values.T
-    values_plot_accumulate = np.cumsum(values_plot_individual, axis=1)
-
-    return df_pf_lc_count, values_plot_individual, values_plot_accumulate
+    return df_pf_lc_count
 
 
-# def main():
-if __name__ == '__main__':
+def main():
+# if __name__ == '__main__':
 
-    list_year = np.arange(1996, 2023, 1)
     pwd = os.getcwd()
     rootpath = os.path.abspath(os.path.join(pwd, '..'))
 
     # np.set_printoptions(precision=4, suppress=True)
 
     country_flag = 'haiti'
-    df_pf_lc_count_haiti, values_plot_individual_haiti, values_plot_accumulate_haiti = get_conversion_info(country_flag)
+    df_pf_lc_count_haiti = get_conversion_info(country_flag, rootpath)
 
     country_flag = 'dr'
-    df_pf_lc_count_dr, values_plot_individual_dr, values_plot_accumulate_dr = get_conversion_info(country_flag)
+    df_pf_lc_count_dr = get_conversion_info(country_flag, rootpath)
 
     ##
     # plot_pf_annual_conversion_stacked(df_pf_lc_count_haiti, plot_type='accumulate',
