@@ -1,21 +1,11 @@
 """
-    Report the land cover and PF loss accuracy_assessment results after the re-interpretation and group discussion
+    Report the land cover and PF loss accuracy_assessment results
 """
 
-import time
 import numpy as np
-import numpy.typing as npt
 import os
 from os.path import join
-import sys
-from osgeo import gdal, gdal_array
-import glob
 import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
-import fiona
-import geopandas as gpd
-import seaborn as sns
 
 from accuracy_assessment.good_practice_accuracy_assessment import (generate_good_practice_matrix,
                                                                    plot_df_confusion, get_adjusted_area_and_margin_of_error)
@@ -139,3 +129,21 @@ if __name__ == '__main__':
     ##
     get_adjusted_area_and_margin_of_error(df_confusion_pf_loss.values, df_err_adjust_pf_loss, array_count_pf_loss, confidence_interval=1.96)
 
+    ##
+    pf_loss_adjusted_area = df_err_adjust_pf_loss.loc['total', 2] * np.nansum(array_count_pf_loss) * 900 / 1000000
+    print(f'PF loss area (adjusted): {pf_loss_adjusted_area:.1f} km2')
+
+    array_pf_loss_driver = df_pf_loss_assessment['final_pf_loss_driver'].values[~mask_exclude_pf_loss]
+    array_pf_loss_driver = array_pf_loss_driver.astype(str)
+
+    array_pf_loss_driver_name, array_pf_loss_driver_count = np.unique(array_pf_loss_driver, return_counts=True)
+    array_pf_loss_driver_name = array_pf_loss_driver_name[0:-1]
+    array_pf_loss_driver_count = array_pf_loss_driver_count[0:-1]
+
+    array_pf_loss_driver_percent = array_pf_loss_driver_count / array_pf_loss_driver_count.sum() * 100
+
+    area_pf_loss_area_each_driver = np.zeros(len(array_pf_loss_driver_name), dtype=float)
+    for i in range(0, len(array_pf_loss_driver_name)):
+        area_pf_loss_area_each_driver[i] = array_pf_loss_driver_percent[i] / 100 * pf_loss_adjusted_area
+
+        print(f'{array_pf_loss_driver_name[i]}: {array_pf_loss_driver_count[i]} / {np.sum(array_pf_loss_driver_count)} ({array_pf_loss_driver_percent[i]:.2f}%), {area_pf_loss_area_each_driver[i]:.1f} km2')
