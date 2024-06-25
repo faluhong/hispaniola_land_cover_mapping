@@ -125,7 +125,7 @@ if __name__ == '__main__':
     pwd = os.getcwd()
     rootpath = os.path.abspath(os.path.join(pwd, '..'))
 
-    filename_percentile = join(rootpath, 'data', 'land_cover_pct.xlsx')
+    filename_percentile = join(rootpath, 'results', 'land_cover_pct.xlsx')
 
     sheet_hispaniola = pd.read_excel(filename_percentile, sheet_name='Hispaniola')
     sheet_haiti = pd.read_excel(filename_percentile, sheet_name='Haiti')
