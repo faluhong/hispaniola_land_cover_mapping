@@ -5,15 +5,8 @@
 import numpy as np
 import os
 from os.path import join
-import time
-import sys
 from osgeo import gdal_array
 
-
-# pwd = os.getcwd()
-# rootpath_project = os.path.abspath(os.path.join(pwd, '..'))
-# path_pythoncode = join(rootpath_project, 'pythoncode')
-# sys.path.append(path_pythoncode)
 
 def change_matrix_generate(array_lc_former, array_lc_latter, landcover_types=8):
     """
@@ -49,7 +42,17 @@ def matrix_normalized(input_matrix):
     return output_matrix
 
 
-def transition_prob_matrix_two_times(img_lc_t1, img_lc_t2, landcover_types=9):
+def transition_prob_matrix_two_times(img_lc_t1, img_lc_t2, landcover_types=8):
+    """
+        calculate the transition probability matrix from time t1 to time t2
+    Args:
+        img_lc_t1:
+        img_lc_t2:
+        landcover_types:
+
+    Returns:
+
+    """
     change_matrix_t1_t2 = change_matrix_generate(img_lc_t1, img_lc_t2, landcover_types=landcover_types)
     transition_prob_matrix_t1_t2 = matrix_normalized(change_matrix_t1_t2)
 
@@ -86,10 +89,9 @@ def land_cover_map_read_published_version(year, country_flag='hispaniola'):
 
 
 if __name__ == '__main__':
-    # outputpath_version_flag = 'publish_v1'
-    # predict_flag = 'hindcast'
 
     country_flag = 'haiti'
+    # country_flag = 'dr'
 
     pwd = os.getcwd()
     rootpath = os.path.abspath(os.path.join(pwd, '..'))
@@ -97,16 +99,8 @@ if __name__ == '__main__':
     list_year = np.arange(1996, 2023)
     landcover_types = 8
 
-    # if predict_flag == 'forecast':
-    #     list_year = np.arange(1996, 2023)
-    # else:
-    #     list_year = np.arange(2022, 1995, -1)
-
     transition_prob_matrix_adjacent = np.zeros((len(list_year), landcover_types, landcover_types), dtype=float)
     transition_prob_matrix_adjacent[0, :, :] = np.identity(landcover_types)   # the first year is the identity matrix
-
-    # transition_prob_matrix_accumulate_indirect = transition_prob_matrix_adjacent.copy()
-    # transition_prob_matrix_accumulate_direct = transition_prob_matrix_adjacent.copy()
 
     transition_prob_matrix_tmp = np.identity(landcover_types)
     for i_year in range(0, len(list_year) - 1):
@@ -119,14 +113,7 @@ if __name__ == '__main__':
         change_stats_adjacent = transition_prob_matrix_two_times(img_lc_t1, img_lc_t2, landcover_types=landcover_types)
         transition_prob_matrix_adjacent[i_year + 1] = change_stats_adjacent.transition_prob_matrix
 
-        # transition_prob_matrix_tmp = transition_prob_matrix_tmp @ change_stats_adjacent.transition_prob_matrix
-        # transition_prob_matrix_accumulate_indirect[i_year + 1] = transition_prob_matrix_tmp
-
-        # img_lc_start = land_cover_map_read_published_version(list_year[0], country_flag)
-        # transition_prob_matrix_accumulate_direct[i_year + 1] \
-        #     = transition_prob_matrix_two_times(img_lc_start, img_lc_t2, landcover_types=landcover_types).transition_prob_matrix
-
-    ##
+    ## output the change matrix
     output_path = join(rootpath, 'results', 'change_matrix')
     if not os.path.exists(output_path):
         os.makedirs(output_path, exist_ok=True)
@@ -134,9 +121,4 @@ if __name__ == '__main__':
     output_adjacent_prob_matrix = join(output_path, f'{country_flag}_adjacent_matrix.npy')
     np.save(output_adjacent_prob_matrix, transition_prob_matrix_adjacent)
 
-    # output_accumulate_prob_matrix_indirect = join(output_path, '{}_{}_accumulate_matrix_indirect.npy'.format(predict_flag, country_flag))
-    # np.save(output_accumulate_prob_matrix_indirect, transition_prob_matrix_accumulate_indirect)
-    #
-    # output_accumulate_prob_matrix_direct = join(output_path, '{}_{}_accumulate_matrix_direct.npy'.format(predict_flag, country_flag))
-    # np.save(output_accumulate_prob_matrix_direct, transition_prob_matrix_accumulate_direct)
 
