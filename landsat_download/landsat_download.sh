@@ -17,3 +17,5 @@ conda activate py38   # replace with your own conda environment
 cd /gpfs/scratchfs1/zhz18039/fah20002/pycold_running/pythoncode/
 
 python3 landsat_download.py  --i_collect=$SLURM_ARRAY_TASK_ID  --path_and_row='010047' --start_date='2023-03-01'  --end_date='2023-04-01'
+
+
