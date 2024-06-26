@@ -62,7 +62,7 @@ def generate_good_practice_matrix(data, array_weight, array_count, confidence_in
         df_err_adjust.loc['PA', i + 1] = df_err_adjust.iloc[i, i] / df_err_adjust.loc['total', i + 1]
         df_err_adjust.loc[i + 1, 'UA'] = df_err_adjust.iloc[i, i] / df_err_adjust.loc[i + 1, 'total']
 
-    df_err_adjust.loc['total', 'total'] = 100
+    df_err_adjust.loc['total', 'total'] = 1
 
     # calculate the overall accuracy
     overall_accuracy = np.nansum(np.diag(df_err_adjust.iloc[0: landcover_types, 0: landcover_types].values))
