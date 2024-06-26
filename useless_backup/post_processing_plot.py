@@ -56,40 +56,6 @@ def get_row_col_id_from_lat_long(latitude, longitude):
     return tilename, row_id_in_tile, col_id_in_tile
 
 
-def datenum_to_datetime(datenum):
-    """
-        convert the datenum to datetime
-    Args:
-        datenum:
-
-    Returns:
-
-    """
-    python_datetime = datetime.fromordinal(int(datenum))
-    return python_datetime
-
-
-def standard_CCD (time_series,parameter):
-    """
-        linear
-    Args:
-        time_series:
-        parameter:
-
-    Returns:
-
-    """
-
-    omega = 2 * np.pi / 365.25
-
-    surface_reflectance = np.dot(np.array([np.ones(np.shape(time_series)), time_series/10000,
-                                           np.cos(omega * time_series), np.sin(omega * time_series),
-                                           np.cos(2 * omega * time_series), np.sin(2 * omega * time_series),
-                                           np.cos(3 * omega * time_series), np.sin(3 * omega * time_series)]).T, parameter)
-
-    return surface_reflectance
-
-
 def vegetation_index_cal(blues, greens, reds, nirs, swir1s, swir2s):
     """
         calcualte the NDVI, kNDVI, NBR, EVI
@@ -144,6 +110,40 @@ def cal_ndfi(img_unmix):
     ndfi = (gv_shade - npv - soil) / (gv_shade + npv + soil)
 
     return ndfi
+
+
+def datenum_to_datetime(datenum):
+    """
+        convert the datenum to datetime
+    Args:
+        datenum:
+
+    Returns:
+
+    """
+    python_datetime = datetime.fromordinal(int(datenum))
+    return python_datetime
+
+
+def standard_CCD(time_series,parameter):
+    """
+        linear
+    Args:
+        time_series:
+        parameter:
+
+    Returns:
+
+    """
+
+    omega = 2 * np.pi / 365.25
+
+    surface_reflectance = np.dot(np.array([np.ones(np.shape(time_series)), time_series/10000,
+                                           np.cos(omega * time_series), np.sin(omega * time_series),
+                                           np.cos(2 * omega * time_series), np.sin(2 * omega * time_series),
+                                           np.cos(3 * omega * time_series), np.sin(3 * omega * time_series)]).T, parameter)
+
+    return surface_reflectance
 
 
 def get_breakcategory(ccd_plot, i_curve):
@@ -541,13 +541,13 @@ if __name__ == '__main__':
         title = f'Latitude: {latitude}, Longitude: {longitude}, num of clear obs: {num_clear_obs}, num of segments: {len(cold_result_singlepixel)}'
 
         if (i == 0) | (i == 1):
-            # nbr = (nirs - swir2s) / (nirs + swir2s)
-            # plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title=title, cold_curve_plot_flag=True)
+            nbr = (nirs - swir2s) / (nirs + swir2s)
+            plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title=title, cold_curve_plot_flag=True)
 
-            ndvi, kndvi, nbr, evi, ndfi = vegetation_index_cal(blues, greens, reds, nirs, swir1s, swir2s)
-            list_vegetation_index = ['NDVI', 'kNDVI', 'EVI', 'NBR', 'NDFI']
-            plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr, ndfi, cold_result_singlepixel, title,
-                                  cold_curve_plot_flag=True,)
+            # ndvi, kndvi, nbr, evi, ndfi = vegetation_index_cal(blues, greens, reds, nirs, swir1s, swir2s)
+            # list_vegetation_index = ['NDVI', 'kNDVI', 'EVI', 'NBR', 'NDFI']
+            # plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr, ndfi, cold_result_singlepixel, title,
+            #                       cold_curve_plot_flag=True,)
 
         else:
             # list_band_name = ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2', 'Thermal']
