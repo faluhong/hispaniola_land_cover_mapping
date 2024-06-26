@@ -1,40 +1,94 @@
 """
-    Manuscript figure post-processing plot
+    plot the examples of post-processing
 """
 
-import time
 import numpy as np
 import os
 from os.path import join
-import sys
-import glob
 import pandas as pd
 from datetime import datetime
-import matplotlib.pyplot as plt
-import click
-from osgeo import gdal, gdal_array, gdalconst
-import earthpy.plot as ep
-import matplotlib
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import matplotlib.dates as mdates
 from pyproj import Proj, CRS, Transformer
-import plotly.express as px
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
 import pysptools
 import pysptools.abundance_maps
-from scipy.stats import chi2
 
-pwd = os.getcwd()
-rootpath = os.path.abspath(os.path.join(pwd, '../..'))
-path_pythoncode = join(rootpath, 'pythoncode')
-sys.path.append(path_pythoncode)
 
-from Basic_tools.Figure_plot import FP_ISP, FP, band_plot, qc_plot
-from Basic_tools.datetime_datenum_convert import datenum_to_datetime, datetime_to_datenum
-from Basic_tools.standard_CCD import standard_CCD
+def get_row_col_id_from_lat_long(latitude, longitude):
+    """get the row and col in from the latitude and longitude
+
+    Args:
+        latitude (_type_): _description_
+        longitude (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    proj_wgs84 = CRS("WGS84")
+    src_proj = ('PROJCS["Albers_Conic_Equal_Area",GEOGCS["WGS 84",DATUM["WGS_1984",'
+                'SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],'
+                'AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["Degree",0.0174532925199433]],PROJECTION["Albers_Conic_Equal_Area"],'
+                'PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["standard_parallel_1",29.5],'
+                'PARAMETER["standard_parallel_2",45.5],PARAMETER["false_easting",0],PARAMETER["false_northing",0],'
+                'UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]')
+
+    src_geotrans = (2333008.6177587425, 30.0, 0.0, 39144.35085645504, 0.0, -30.0)
+
+    transformer = Transformer.from_proj(proj_wgs84, src_proj)
+    x, y = transformer.transform(latitude, longitude)
+
+    res = 30
+    NRow, NCol = 2500, 2500
+
+    col_id_study_area = int(abs((x - src_geotrans[0]) // res))
+    row_id_study_area = int(abs((y - src_geotrans[3]) // res))
+
+    h_index = int(col_id_study_area // NRow)
+    v_index = int(row_id_study_area // NCol)
+
+    tilename = 'h{:02d}v{:02d}'.format(h_index, v_index)
+
+    row_id_in_tile = row_id_study_area - v_index * NRow - 1
+    col_id_in_tile = col_id_study_area - h_index * NCol
+
+    return tilename, row_id_in_tile, col_id_in_tile
+
+
+def datenum_to_datetime(datenum):
+    """
+        convert the datenum to datetime
+    Args:
+        datenum:
+
+    Returns:
+
+    """
+    python_datetime = datetime.fromordinal(int(datenum))
+    return python_datetime
+
+
+def standard_CCD (time_series,parameter):
+    """
+        linear
+    Args:
+        time_series:
+        parameter:
+
+    Returns:
+
+    """
+
+    omega = 2 * np.pi / 365.25
+
+    surface_reflectance = np.dot(np.array([np.ones(np.shape(time_series)), time_series/10000,
+                                           np.cos(omega * time_series), np.sin(omega * time_series),
+                                           np.cos(2 * omega * time_series), np.sin(2 * omega * time_series),
+                                           np.cos(3 * omega * time_series), np.sin(3 * omega * time_series)]).T, parameter)
+
+    return surface_reflectance
+
 
 def vegetation_index_cal(blues, greens, reds, nirs, swir1s, swir2s):
     """
@@ -115,49 +169,8 @@ def get_breakcategory(ccd_plot, i_curve):
         return 1
 
 
-def get_row_col_id_from_lat_long(latitude, longitude):
-    """get the row and col in from the latitude and longitude
-
-    Args:
-        latitude (_type_): _description_
-        longitude (_type_): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    proj_wgs84 = CRS("WGS84")
-    src_proj = ('PROJCS["Albers_Conic_Equal_Area",GEOGCS["WGS 84",DATUM["WGS_1984",'
-                'SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],'
-                'AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["Degree",0.0174532925199433]],PROJECTION["Albers_Conic_Equal_Area"],'
-                'PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["standard_parallel_1",29.5],'
-                'PARAMETER["standard_parallel_2",45.5],PARAMETER["false_easting",0],PARAMETER["false_northing",0],'
-                'UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]')
-
-    src_geotrans = (2333008.6177587425, 30.0, 0.0, 39144.35085645504, 0.0, -30.0)
-
-    transformer = Transformer.from_proj(proj_wgs84, src_proj)
-    x, y = transformer.transform(latitude, longitude)
-
-    res = 30
-    NRow, NCol = 2500, 2500
-
-    col_id_study_area = int(abs((x - src_geotrans[0]) // res))
-    row_id_study_area = int(abs((y - src_geotrans[3]) // res))
-
-    h_index = int(col_id_study_area // NRow)
-    v_index = int(row_id_study_area // NCol)
-
-    tilename = 'h{:02d}v{:02d}'.format(h_index, v_index)
-
-    row_id_in_tile = row_id_study_area - v_index * NRow - 1
-    col_id_in_tile = col_id_study_area - h_index * NCol
-
-    return tilename, row_id_in_tile, col_id_in_tile
-
-
 def COLD_plot(df_plot, cold_result_singlepixel, title=None, list_plot_band_name=None,
-              set_limit_flag=0, limit_pct=99, cold_curve_plot_flag=True,
-              output_flag=0, dpi=300, output_path=None, output_filename=None, output_format='jpg'):
+              set_limit_flag=0, limit_pct=99, cold_curve_plot_flag=True,):
     sns.set(style="darkgrid")
     sns.set_context("notebook")
     plt.rcParams['font.family'] = 'Arial'
@@ -271,19 +284,10 @@ def COLD_plot(df_plot, cold_result_singlepixel, title=None, list_plot_band_name=
     plt.tight_layout()
     plt.show()
 
-    if output_flag == 1:
-        if output_path is None:
-            output_path = os.getcwd()
-        if output_filename is None:
-            output_filename = 'COLD_plot'
-        if output_format is None:
-            output_format = 'jpg'
 
-        plt.savefig(join(output_path, output_filename + '.' + output_format), dpi=dpi)
-
-
-def plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr, ndfi, cold_result_singlepixel, title, cold_curve_plot_flag=True,
-                          output_flag=0, dpi=300, output_path=None, output_filename=None, output_format='jpg'):
+def plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr, ndfi,
+                          cold_result_singlepixel, title, cold_curve_plot_flag=True,
+                          ):
     """plot the vegetation index using matplotlib
 
     Args:
@@ -299,10 +303,6 @@ def plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr,
         limit_pct (int, optional): _description_. Defaults to 99.
         cold_curve_plot_flag (bool, optional): _description_. Defaults to True.
     """
-    # df_plot = df_example
-    # set_limit_flag=1
-    # limit_pct=99
-    # cold_curve_plot_flag = True
 
     sns.set(style="darkgrid")
     sns.set_context("notebook")
@@ -407,20 +407,8 @@ def plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr,
     plt.tight_layout()
     plt.show()
 
-    if output_flag == 1:
-        if output_path is None:
-            output_path = os.getcwd()
-        if output_filename is None:
-            output_filename = 'COLD_plot'
-        if output_format is None:
-            output_format = 'jpg'
 
-        plt.savefig(join(output_path, output_filename + '.' + output_format), dpi=dpi)
-
-
-
-def plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title, cold_curve_plot_flag=True,
-                          output_flag=0, dpi=300, output_path=None, output_filename=None, output_format='jpg'):
+def plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title, cold_curve_plot_flag=True):
     """plot the vegetation index using matplotlib
 
     Args:
@@ -436,10 +424,6 @@ def plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title, cold_curve_plot
         limit_pct (int, optional): _description_. Defaults to 99.
         cold_curve_plot_flag (bool, optional): _description_. Defaults to True.
     """
-    # df_plot = df_example
-    # set_limit_flag=1
-    # limit_pct=99
-    # cold_curve_plot_flag = True
 
     sns.set(style="darkgrid")
     sns.set_context("notebook")
@@ -509,61 +493,38 @@ def plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title, cold_curve_plot
         axes[band_id, 0].set_xlim(datetime(year=1982, month=1, day=1), datetime(year=2024, month=1, day=1), )
 
     # set the legend
-    # if cold_curve_plot_flag is True:
-    #     legend_elements = [Line2D([0], [0], color='black', lw=lw_break, label='Disturbance break'),
-    #                        Line2D([0], [0], color='red', lw=lw_break, label='Recovery break'),
-    #                        Line2D([0], [0], color='orange', lw=lw_model_fit, label='Model fit'),
-    #                        Line2D([], [], color='b', marker='.', linestyle='None', markersize=8, label='observations')]
-    # else:
-    #     legend_elements = [Line2D([], [], color='b', marker='.', linestyle='None', markersize=8, label='observations')]
-    #
-    # axes[band_id, 0].legend(handles=legend_elements, ncol=len(legend_elements), loc='best', prop={'size': legend_size})  # type: ignore
+    if cold_curve_plot_flag is True:
+        legend_elements = [Line2D([0], [0], color='black', lw=lw_break, label='Disturbance break'),
+                           Line2D([0], [0], color='red', lw=lw_break, label='Recovery break'),
+                           Line2D([0], [0], color='orange', lw=lw_model_fit, label='Model fit'),
+                           Line2D([], [], color='b', marker='.', linestyle='None', markersize=8, label='observations')]
+    else:
+        legend_elements = [Line2D([], [], color='b', marker='.', linestyle='None', markersize=8, label='observations')]
+
+    axes[band_id, 0].legend(handles=legend_elements, ncol=len(legend_elements), loc='best', prop={'size': legend_size})  # type: ignore
 
     plt.tight_layout()
     plt.show()
-
-    if output_flag == 1:
-        if output_path is None:
-            output_path = os.getcwd()
-        if output_filename is None:
-            output_filename = 'COLD_plot'
-        if output_format is None:
-            output_format = 'jpg'
-
-        plt.savefig(join(output_path, output_filename + '.' + output_format), dpi=dpi)
 
 
 # def main():
 if __name__ == '__main__':
 
-    path_data = r'C:\Users\64937\OneDrive\LCM_biodiversity\manuscript\figure\post_processing\sample_points'
+    pwd = os.getcwd()
+    rootpath = os.path.abspath(os.path.join(pwd, '..'))
+    path_data = join(rootpath, 'data', 'post_processing_samples')
 
-    # list_filename = glob.glob(join(path_data, '*.csv'))
-
-    array_post_processing_example = np.array([[17.56608962, -71.51920036],
-                                              [19.02904, -70.97137591],
-                                              [19.00814526, -71.18575332],
-                                              [18.28849286, -71.34908449],
+    array_post_processing_example = np.array([[17.56608962, -71.51920036],  # Drought disturbance, delta_NBR < 0.05
+                                              [19.02904, -70.97137591],  # Fire disturbance, delta_NBR > 0.05
+                                              [19.00814526, -71.18575332],  # Correct the error in PF classification
+                                              [18.28849286, -71.34908449],  # Correct the error in developed classification
                                               ])
 
-    list_label = ['a', 'b', 'c', 'd']
-
     for i in range(0, array_post_processing_example.shape[0]):
-        # for i in range(2, 3):
+
         latitude, longitude = array_post_processing_example[i, :]
-
         tilename, row_id_intile, col_id_intile = get_row_col_id_from_lat_long(latitude, longitude)
-
-    # for i_filename in range(0, len(list_filename)):
-    # for i_filename in range(2, 3):
-    #     filename = list_filename[i_filename]
-    #
-    #     tilename = filename.split('\\')[-1].split('_')[0]
-    #     row_id_intile = int(filename.split('\\')[-1].split('_')[1].split('row')[1])
-    #     col_id_intile = int(filename.split('\\')[-1].split('_')[2].split('col')[1].split('.')[0])
-
-        print(latitude, longitude)
-        print(tilename, row_id_intile, col_id_intile)
+        print(latitude, longitude, tilename, row_id_intile, col_id_intile)
 
         filename_sample = join(path_data, '{}_row{}_col{}.csv'.format(tilename, row_id_intile, col_id_intile))
         df_plot = pd.read_csv(filename_sample)
@@ -576,34 +537,25 @@ if __name__ == '__main__':
         filename_cold_result = join(path_data, '{}_row{}_col{}_cold_result.npy'.format(tilename, row_id_intile, col_id_intile))
         cold_result_singlepixel = np.load(filename_cold_result, allow_pickle=True)
 
-        mask = (qas == 0) | (qas == 1)
-        num_clear_obs = np.count_nonzero(mask)
+        num_clear_obs = np.count_nonzero(((qas == 0) | (qas == 1)))   # the number of clear observations
+        title = f'Latitude: {latitude}, Longitude: {longitude}, num of clear obs: {num_clear_obs}, num of segments: {len(cold_result_singlepixel)}'
 
-        # ndvi, kndvi, nbr, evi, ndfi = vegetation_index_cal(blues, greens, reds, nirs, swir1s, swir2s)
-        nbr = (nirs - swir2s) / (nirs + swir2s)
-        list_vegetation_index = ['NDVI', 'kNDVI', 'EVI', 'NBR', 'NDFI']
+        if (i == 0) | (i == 1):
+            # nbr = (nirs - swir2s) / (nirs + swir2s)
+            # plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title=title, cold_curve_plot_flag=True)
 
-        list_plot_band_name = None
-        title = ('{} row={}  col={}  num of clear obs:{}  num of segments: {}'
-                 .format(tilename, row_id_intile, col_id_intile, num_clear_obs, len(cold_result_singlepixel)))
+            ndvi, kndvi, nbr, evi, ndfi = vegetation_index_cal(blues, greens, reds, nirs, swir1s, swir2s)
+            list_vegetation_index = ['NDVI', 'kNDVI', 'EVI', 'NBR', 'NDFI']
+            plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr, ndfi, cold_result_singlepixel, title,
+                                  cold_curve_plot_flag=True,)
 
-        COLD_plot(df_plot, cold_result_singlepixel, title=None, list_plot_band_name=list_plot_band_name,
-                  set_limit_flag=1, limit_pct=99, cold_curve_plot_flag=True,
-                  output_flag=1, dpi=300, output_path=path_data,
-                  output_filename='{}_{}_row{}_col{}_cold'.format(list_label[i], tilename, row_id_intile, col_id_intile), output_format='jpg')
+        else:
+            # list_band_name = ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2', 'Thermal']
+            # list_band_name = ['Red', 'NIR', 'SWIR1']
+            # list_band_name = ['NIR']
+            list_band_name = ['Blue', 'Green', 'Red', 'NIR', 'SWIR1', 'SWIR2', 'Thermal']
+            COLD_plot(df_plot, cold_result_singlepixel,
+                      title=title, list_plot_band_name=list_band_name,
+                      set_limit_flag=1, limit_pct=99, cold_curve_plot_flag=True,)
 
-        # plot_vegetation_index(df_plot, list_vegetation_index, ndvi, kndvi, evi, nbr, ndfi, cold_result_singlepixel, title, cold_curve_plot_flag=True,
-        #                       output_flag=1, dpi=300, output_path=path_data,
-        #                       output_filename='{}_row{}_col{}_vi'.format(tilename, row_id_intile, col_id_intile), output_format='jpg')
 
-        plot_nbr_index(df_plot, nbr, cold_result_singlepixel, title=None, cold_curve_plot_flag=True,
-                       output_flag=1, dpi=300, output_path=path_data,
-                       output_filename='{}_{}_row{}_col{}_nbr'.format(list_label[i], tilename, row_id_intile, col_id_intile), output_format='jpg')
-
-        # outdf_name = join(rootpath, 'results', 'sample_points', '{}_row{}_col{}.csv'.format(tilename, row_id_intile, col_id_intile))
-        # df_plot.to_csv(outdf_name)
-        #
-        # out_cold_result = join(rootpath, 'results', 'sample_points', '{}_row{}_col{}_cold_result.npy'.format(tilename, row_id_intile, col_id_intile))
-        # np.save(out_cold_result, cold_result_singlepixel)
-
-        # output_filename = kml_output(tilename, row_id_intile, col_id_intile)
