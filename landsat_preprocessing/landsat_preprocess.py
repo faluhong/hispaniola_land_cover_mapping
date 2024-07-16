@@ -26,10 +26,10 @@ import pandas as pd
 
 pwd = os.getcwd()
 rootpath = os.path.abspath(os.path.join(pwd, '..'))
-path_data = os.path.join(rootpath, 'data', 'Level2')
-path_pythoncode = os.path.join(rootpath, 'pythoncode')
-sys.path.append(path_pythoncode)
 
+RES = 30                    # resolution of the pixel
+NRow, NCol = 2500, 2500     # the size of each ARD tile
+Block_Size = 250            # the size of each block
 
 def qabitval_array(packedint_array):
     """
@@ -136,7 +136,6 @@ def stacking_zip_file(filename_zip, path_and_row, image_basename):
         # 0 -- clear; 1 -- water; 2 -- shadow; 3 -- snow; 4 -- cloud; 255 -- fill value
         img_QC = qabitval_array(gdal_array.LoadFile(join(output_directory_unzip, image_basename + '_QA_PIXEL.TIF')))
 
-    ##
     # scale the optical surface reflectance to 0-10000
     img_B1 = 10000 * (img_B1 * 2.75e-05 - 0.2)
     img_B2 = 10000 * (img_B2 * 2.75e-05 - 0.2)
@@ -187,6 +186,7 @@ def stacking_zip_file(filename_zip, path_and_row, image_basename):
     del img_B1, img_B2, img_B3, img_B4, img_B5, img_B6, img_B7, img_QC, img_stack_output
 
     return output_directory_unzip, filename_output
+
 
 def create_ARD_block(filename_stacking_output, path_and_row, image_basename, path_output):
     """
@@ -277,7 +277,9 @@ def create_ARD_block(filename_stacking_output, path_and_row, image_basename, pat
                                 if not os.path.exists(output_folder_ARD_block):
                                     os.makedirs(output_folder_ARD_block)
 
-                                output_filename_ARD_block = join(output_folder_ARD_block, '{}_{}_{}.npy'.format(image_basename, tilename, block_id))
+                                output_filename_ARD_block = join(output_folder_ARD_block,
+                                                                 '{}_{}_{}.npy'.format(image_basename, tilename, block_id))
+                                logging.info('output the ARD block: {}'.format(output_filename_ARD_block))
                                 np.save(output_filename_ARD_block, img_ard_block)
 
             except Exception as e:
@@ -286,6 +288,7 @@ def create_ARD_block(filename_stacking_output, path_and_row, image_basename, pat
                 pass
 
     return None
+
 
 def write_finish_flag(path_and_row, image_basename):
     """
@@ -307,12 +310,6 @@ def write_finish_flag(path_and_row, image_basename):
     return None
 
 
-list_landsat_collection = ['landsat_tm_c2_l2', 'landsat_etm_c2_l2', 'landsat_ot_c2_l2']
-
-RES = 30
-NRow, NCol = 2500, 2500
-Block_Size = 250
-
 # def main():
 if __name__ == "__main__":
     path_and_row = '010047'
@@ -323,7 +320,8 @@ if __name__ == "__main__":
                         format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
     logging.info('stacking running start for {}'.format(path_and_row))
 
-    filename_zip = join(rootpath, 'data', 'Level2', 'landsat_ot_c2_l2', 'LC09_L2SP_010047_20230305_20230308_02_T1.tar')  # the zip file I provided
+    filename_zip = join(rootpath, 'data', 'Level2', 'landsat_ot_c2_l2',
+                        'LC09_L2SP_010047_20230305_20230308_02_T1.tar')  # the file to be processed
     image_basename = os.path.split(filename_zip)[-1][0:-4]
 
     print('filename for process: {}'.format(filename_zip))
