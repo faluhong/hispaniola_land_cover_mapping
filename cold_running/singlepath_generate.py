@@ -1,26 +1,18 @@
 """
-generate the singele path .tif file for running
+    Generate the tif file including the single path id for each tile
+
+    The tif file is used for the COLD running based on the single path Landsat data
 """
 
 import numpy as np
 from osgeo import gdal_array, gdal, gdalconst
 import os
 from os.path import join
-import sys
-import glob
-import matplotlib.pyplot as plt
-import tarfile
-import click
-import shutil
 import fiona
-import shapely
 from shapely.geometry import Polygon
-import time
 
 pwd = os.getcwd()
 rootpath = os.path.abspath(os.path.join(pwd, '..'))
-path_pythoncode = os.path.join(rootpath, 'pythoncode')
-sys.path.append(path_pythoncode)
 
 if __name__ == '__main__':
 
