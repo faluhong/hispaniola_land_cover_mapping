@@ -162,6 +162,11 @@ if __name__ == "__main__":
     sheet_interpretation_sample = pd.read_excel(filename_interpretation_sample, sheet_name='Sheet1')
 
     x_training_with_topography, y_training_with_topography = get_x_y_training_withdem(sheet_interpretation_sample)
+    print('number of example training sample is {}'.format(len(y_training_with_topography)))
+
+    # random forest training. Training 25000 sample takes about 2 minutes
+    from landcover_classification.rf_training_classification import rf_training
+    rf_classifier = rf_training(x_training_with_topography, y_training_with_topography)
 
 
 
