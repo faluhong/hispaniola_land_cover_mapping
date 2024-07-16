@@ -1,12 +1,15 @@
 """
-land cover classification from the COLD reccg file to the land cover classification outputs
-random forest model is pre-trained
+    This code contains the functions describing the workflow of the land cover classification
+
+    Some notes for this code
+    (1) Random forest model is pre-trained from the rf_training_classification.py file
+    (2) The main function contains the workflow of classifying the land cover for the example block
+    (3) Minimum Mapping Unit post-processing is not included in this code. The MMU filter process is done after finishing classification for all blocks
 """
 
 import numpy as np
 import os
 from os.path import join
-import sys
 import pandas as pd
 import joblib
 from datetime import datetime
@@ -22,8 +25,6 @@ import matplotlib.patches as mpatches
 
 pwd = os.getcwd()
 rootpath = os.path.abspath(os.path.join(pwd, '..'))
-path_pythoncode = join(rootpath, 'pythoncode')
-sys.path.append(path_pythoncode)
 
 Block_Size = 250
 
@@ -31,6 +32,7 @@ record_start_year = 1984
 record_end_year = 2022
 
 list_year = np.arange(record_start_year, record_end_year + 1)
+
 
 def datetime_to_datenum(dt):
     """convert the datetime to datenum
@@ -42,6 +44,7 @@ def datetime_to_datenum(dt):
     """
     python_datenum = dt.toordinal()
     return python_datenum
+
 
 def datenum_to_datetime(datenum):
     """
@@ -245,23 +248,19 @@ def land_cover_classification(rf_classifier, cold_block, img_dem_block, img_slop
 
         # refine the classification results
         array_pos = cold_block['pos']
-        array_t_start = cold_block['t_start']
-        array_t_end = cold_block['t_end']
 
         for pos_id in range(1, Block_Size * Block_Size + 1):
 
             if np.count_nonzero(array_pos == pos_id) <= 1:
                 pass
             else:
-                location_pos = np.where(array_pos == pos_id)[0]
-                location_t_start = array_t_start[array_pos == pos_id]
-                location_t_end = array_t_end[array_pos == pos_id]
 
                 # post-process the classification results output by random forest
-                if post_processing_flag == 0:
+                if post_processing_flag == 0:  # no post-processing
                     pass
                 else:
-                    y_prediction = post_processing(y_prediction, y_prediction_prob, location_pos, location_t_end, location_t_start)
+                    y_prediction = post_processing(y_prediction, y_prediction_prob, cold_block, pos_id, rule_specific_year=1996)
+                    # y_prediction = post_processing(y_prediction, y_prediction_prob, location_pos, location_t_end, location_t_start)
 
         # prepare the dataset to output the classification results
         array_t_start = cold_block['t_start']
@@ -287,73 +286,133 @@ def land_cover_classification(rf_classifier, cold_block, img_dem_block, img_slop
             js.dump(df_predict_each_rec_cg.to_json(), f)
 
 
+def standard_CCD(time_series, parameter):
+    """
+        the
 
-def post_processing(y_prediction, y_prediction_prob, location_pos, location_t_end, location_t_start):
+    Args:
+        time_series: time series of array datenum
+        parameter: harmonic function coefficient
+
+    Returns:
+        _type_: _description_
+    """
+    pi = np.pi
+    omega = 2 * pi / 365.25
+    surface_reflectance = np.dot(np.array([np.ones(np.shape(time_series)), time_series / 10000,
+                                           np.cos(omega * time_series), np.sin(omega * time_series),
+                                           np.cos(2 * omega * time_series), np.sin(2 * omega * time_series),
+                                           np.cos(3 * omega * time_series), np.sin(3 * omega * time_series)]).T, parameter)
+    return surface_reflectance
+
+
+def post_processing(y_prediction, y_prediction_prob, cold_block, pos_id, rule_specific_year=1996):
     """
         post-processing the classification results output by random forest.
         Rules included:
         (1) primary forest rule after 1996: correct the primary forest when change is detected
         (2) developed rule: reduce the errors in misclassified developed pixels in the middle, such as shrub -> developed -> shrub
         (3) third rule to process the last temporal segment
-    Args:
-        y_prediction:
-        y_prediction_prob:
-        location_pos:
-        location_t_end:
-        location_t_start:
-
-    Returns:
     """
 
+    array_t_start = cold_block['t_start']
+    array_t_end = cold_block['t_end']
+    array_pos = cold_block['pos']
+
+    location_pos = np.where(array_pos == pos_id)[0]
+    location_t_start = array_t_start[array_pos == pos_id]  # the location of t_start in the rec_cg
+    location_t_end = array_t_end[array_pos == pos_id]  # the location of t_end in the rec_cg
+
     for i_loc_pos in range(0, len(location_pos)):
-        # (1) primary forest rule since 1996, i.e., if primary forest change was detected after 1996, then convert it to second possible land cover types
-        if (y_prediction[location_pos[i_loc_pos]] in [3, 4]) & (i_loc_pos != 0):
+        # print(y_prediction[location_pos[i_loc_pos]])
 
-            if location_t_end[i_loc_pos - 1] > (datetime_to_datenum(datetime(year=1996, month=1, day=1))):
-                prob_list_LC = y_prediction_prob[location_pos[i_loc_pos]]
-                position_second_prob = heapq.nlargest(2, np.arange(len(prob_list_LC)),
-                                                      key=prob_list_LC.__getitem__)[-1] + 1
-                if position_second_prob in [3, 4]:
-                    position_second_prob = heapq.nlargest(3, np.arange(len(prob_list_LC)),
-                                                          key=prob_list_LC.__getitem__)[-1] + 1
+        if (i_loc_pos != 0) & (location_t_end[i_loc_pos - 1] > (datetime_to_datenum(datetime(year=rule_specific_year, month=1, day=1)))):
+            # if the segment is not the first segment and the end of previous segment is after 1996, make the primary forest correction
 
-                y_prediction[location_pos[i_loc_pos]] = position_second_prob
+            if (y_prediction[location_pos[i_loc_pos - 1]] in [3, 4]):  # if the previous segment is primary forest, using the NBR threshold
+                # get the 1-year NBR of the end of previous segment
+                t_end_before = location_t_end[i_loc_pos - 1]
+                time_series_before = np.arange(t_end_before - 365, t_end_before)
+
+                ccd_coefs_before = cold_block['coefs'][location_pos[i_loc_pos - 1]]
+
+                nir_ts_before = standard_CCD(time_series_before, ccd_coefs_before[3, :])
+                swir2_ts_before = standard_CCD(time_series_before, ccd_coefs_before[5, :])
+
+                nbr_before = (nir_ts_before - swir2_ts_before) / (nir_ts_before + swir2_ts_before)
+
+                # get the 1-year NBR of the beginning of afterward segment
+                t_start_after = location_t_start[i_loc_pos]
+                time_series_after = np.arange(t_start_after, t_start_after + 365)
+
+                ccd_coefs_after = cold_block['coefs'][location_pos[i_loc_pos]]
+
+                nir_ts_after = standard_CCD(time_series_after, ccd_coefs_after[3, :])
+                swir2_ts_after = standard_CCD(time_series_after, ccd_coefs_after[5, :])
+
+                nbr_after = (nir_ts_after - swir2_ts_after) / (nir_ts_after + swir2_ts_after)
+
+                if np.abs((np.nanmax(nbr_after) - np.nanmax(nbr_before))) <= 0.05:
+                    # if the delta NBR change <= 0.05, do not change the PF classification
+                    y_prediction[location_pos[i_loc_pos]] = y_prediction[location_pos[i_loc_pos - 1]]
+                else:
+                    if (y_prediction[location_pos[i_loc_pos]] in [3, 4]):
+                        # if the current segment is primary forest, this includes two cases:
+                        # (1) the current segment is classified as PF; (2) the current segment is corrected due to the mild NBR change
+
+                        prob_list_LC = y_prediction_prob[location_pos[i_loc_pos]]  # get the probability of each land cover generated by random forest
+                        position_second_prob = heapq.nlargest(2, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1  # the land cover with second high probability
+
+                        if position_second_prob in [3, 4]:
+                            # if the first probability is primary wet or dry forest and the second probability is primary dry or wet forest, then use the third probability
+                            position_second_prob = heapq.nlargest(3, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1
+
+                        y_prediction[location_pos[i_loc_pos]] = position_second_prob
+
+            else:
+                # if the previous segment is not PF and the current segment is PF, correct the current PF to the second possible one
+                if (y_prediction[location_pos[i_loc_pos]] in [3, 4]):
+                    # if the current segment is primary forest, this includes two cases:
+                    # (1) the current segment is classified as PF; (2) the current segment is corrected due to the mild NBR change
+
+                    prob_list_LC = y_prediction_prob[location_pos[i_loc_pos]]  # get the probability of each land cover generated by random forest
+                    position_second_prob = heapq.nlargest(2, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1  # the land cover with second high probability
+
+                    if position_second_prob in [3, 4]:  # if the first probability is primary wet or dry, the second probability cannot be primary dry or wet
+                        position_second_prob = heapq.nlargest(3, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1  # the land cover with third high probability
+
+                    y_prediction[location_pos[i_loc_pos]] = position_second_prob
 
     for i_loc_pos in range(len(location_pos) - 2, -1, -1):
         # (2) developed rule
         if (i_loc_pos == len(location_pos) - 2) & (y_prediction[location_pos[i_loc_pos]] == 1):
             # if this is the second-to-last segment, if the last segment is not develop or barren and the segment time span exceeds 3 years,
-            # correct the developed pixel
+            # correct the developed pixel with the second possible land cover type
             # The corrected land cover type cannot be primary wet or primary dry forests
             if (y_prediction[location_pos[i_loc_pos + 1]] in [3, 4, 5, 6, 7, 8, 9, 10]) & ((location_t_end[i_loc_pos + 1] - location_t_start[i_loc_pos + 1]) > 3 * 365):
                 prob_list_LC = y_prediction_prob[location_pos[i_loc_pos]]
-                position_second_prob = heapq.nlargest(2, np.arange(len(prob_list_LC)),
-                                                      key=prob_list_LC.__getitem__)[-1] + 1
+                position_second_prob = heapq.nlargest(2, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1
                 if position_second_prob in [3, 4]:
-                    position_second_prob = heapq.nlargest(3, np.arange(len(prob_list_LC)),
-                                                          key=prob_list_LC.__getitem__)[-1] + 1
+                    position_second_prob = heapq.nlargest(3, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1
                     if position_second_prob in [3, 4]:
-                        position_second_prob = heapq.nlargest(4, np.arange(len(prob_list_LC)),
-                                                              key=prob_list_LC.__getitem__)[-1] + 1
+                        position_second_prob = heapq.nlargest(4, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1
 
                 y_prediction[location_pos[i_loc_pos]] = position_second_prob
         elif (i_loc_pos == len(location_pos) - 2) & (y_prediction[location_pos[i_loc_pos]] != 1):
+            # if this is the second-to-last segment, if the last segment is not developed, no land cover change will be made
             pass
         else:
             if y_prediction[location_pos[i_loc_pos]] == 1:
-                # if there are two more segments
-                # if one of the next two segments is not developed or barren, correct the developed pixel
+                # if there are two more segments after the current segment, and the current segment is developed
+                # if the next two segments neither are developed pixel, correct the developed pixel with the second possible land cover type
                 # The corrected land cover type cannot be primary wet or primary dry forests
                 if (y_prediction[location_pos[i_loc_pos + 1]] in [2, 3, 4, 5, 6, 7, 8, 9, 10]) & (y_prediction[location_pos[i_loc_pos + 2]] in [2, 3, 4, 5, 6, 7, 8, 9, 10]):
                     prob_list_LC = y_prediction_prob[location_pos[i_loc_pos]]
-                    position_second_prob = heapq.nlargest(2, np.arange(len(prob_list_LC)),
-                                                          key=prob_list_LC.__getitem__)[-1] + 1
+                    position_second_prob = heapq.nlargest(2, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1
                     if position_second_prob in [3, 4]:
-                        position_second_prob = heapq.nlargest(3, np.arange(len(prob_list_LC)),
-                                                              key=prob_list_LC.__getitem__)[-1] + 1
+                        position_second_prob = heapq.nlargest(3, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1
                         if position_second_prob in [3, 4]:
-                            position_second_prob = heapq.nlargest(4, np.arange(len(prob_list_LC)),
-                                                                  key=prob_list_LC.__getitem__)[-1] + 1
+                            position_second_prob = heapq.nlargest(4, np.arange(len(prob_list_LC)), key=prob_list_LC.__getitem__)[-1] + 1
 
                     y_prediction[location_pos[i_loc_pos]] = position_second_prob
 
@@ -424,7 +483,10 @@ def img_lcmap_block_acquire(output_path, tilename, blockname):
 
 def landcover_merge(img_lcmap_fill):
     """
-        merge the secondary wet and dry forest to secondary forest
+        (1) merge the secondary wet and dry forest to secondary forest
+        (2) merge the barren and cropland to other types
+        (3) adjust the land cover id
+
         Ten types land cover:
         1 -> Developed
         2 -> Barren
@@ -439,31 +501,41 @@ def landcover_merge(img_lcmap_fill):
 
         After merging, nine land cver types
         1 -> Developed
-        2 -> Barren
-        3 -> Primary wet forest
-        4 -> Primary dry forest
-        5 -> Secondary forest
-        6 -> Shrub/Grass
-        7 -> Cropland
-        8 -> Water
-        9 -> Wetland
+        2 -> Primary wet forest
+        3 -> Primary dry forest
+        4 -> Secondary forest
+        5 -> Shrub/Grass
+        6 -> Water
+        7 -> Wetland
+        8 -> Other
     """
 
     img_lcmap_merge = img_lcmap_fill.copy()
 
+    # merge the secondary wet forest and secondary dry forest
     img_lcmap_merge[(img_lcmap_merge == 5) | (img_lcmap_merge == 6)] = 5
     img_lcmap_merge[img_lcmap_merge == 7] = 6
     img_lcmap_merge[img_lcmap_merge == 8] = 7
     img_lcmap_merge[img_lcmap_merge == 9] = 8
     img_lcmap_merge[img_lcmap_merge == 10] = 9
 
+    # merge barren and cropland to other
+    img_lcmap_merge[(img_lcmap_merge == 2) | (img_lcmap_merge == 7)] = 10
+    img_lcmap_merge[img_lcmap_merge == 3] = 2
+    img_lcmap_merge[img_lcmap_merge == 4] = 3
+    img_lcmap_merge[img_lcmap_merge == 5] = 4
+    img_lcmap_merge[img_lcmap_merge == 6] = 5
+    img_lcmap_merge[img_lcmap_merge == 8] = 6
+    img_lcmap_merge[img_lcmap_merge == 9] = 7
+    img_lcmap_merge[img_lcmap_merge == 10] = 8
+
     return img_lcmap_merge
 
 
 def landcover_fill(img_lcmap_output):
     """
-        fill the land cover gap in the time series to ensure the consistent land cover map from 1984 to 2022,
-        first using the bfill, then using the ffill
+        fill the land cover gap in the time series to ensure the land cover time series is annually consistent
+        first using the backward fill (bfill), then using the forward fill (ffill)
         Args:
             img_lcmap_output: land cover map classified from the COLD rec_cg file
         Returns:
@@ -520,7 +592,8 @@ def landcover_output(img_lcmap_fill, tilename, blockname, src_geotrans, src_proj
     output_filename = os.path.join(output_path_lcmap, '{}_{}_lcmap.tif'.format(tilename, blockname))
 
     tif_output = gdal.GetDriverByName('GTiff').Create(output_filename, Block_Size, Block_Size,
-                                                       record_end_year - record_start_year + 1, gdalconst.GDT_Float32)
+                                                      record_end_year - record_start_year + 1,
+                                                      gdalconst.GDT_Float32)
     tif_output.SetGeoTransform(src_geotrans)
     tif_output.SetProjection(src_proj)
 
@@ -530,6 +603,8 @@ def landcover_output(img_lcmap_fill, tilename, blockname, src_geotrans, src_proj
         Band.WriteArray(img_output_eachyear)
 
     tif_output = None
+
+    return output_filename
 
 
 def land_cover_plot(img_plot, title='', figsize=(16, 9.5), landcover_system=None, colors=None, ticks_flag=False):
@@ -548,24 +623,22 @@ def land_cover_plot(img_plot, title='', figsize=(16, 9.5), landcover_system=None
     sns.set_style("white")
     if landcover_system is None:
         landcover_system = {'1': 'Developed',
-                            '2': 'Barren',
-                            '3': 'PrimaryWetForest',
-                            '4': 'PrimaryDryForest',
-                            '5': 'SecondaryForest',
-                            '6': 'ShrubGrass',
-                            '7': 'Cropland',
-                            '8': 'Water',
-                            '9': 'Wetland'}
+                            '2': 'PrimaryWetForest',
+                            '3': 'PrimaryDryForest',
+                            '4': 'SecondaryForest',
+                            '5': 'ShrubGrass',
+                            '6': 'Water',
+                            '7': 'Wetland',
+                            '8': 'Other',}
 
-        colors = np.array([np.array([241, 1, 0, 255]) / 255,
-                           np.array([179, 175, 164, 255]) / 255,
-                           np.array([29, 101, 51, 255]) / 255,
-                           np.array([244, 127, 17, 255]) / 255,
-                           np.array([108, 169, 102, 255]) / 255,
-                           np.array([208, 209, 129, 255]) / 255,
-                           np.array([174, 114, 41, 255]) / 255,
-                           np.array([72, 109, 162, 255]) / 255,
-                           np.array([200, 230, 248, 255]) / 255
+        colors = np.array([np.array([241, 1, 0, 255]) / 255,        # Developed
+                           np.array([29, 101, 51, 255]) / 255,      # Primary wet forest
+                           np.array([208, 209, 129, 255]) / 255,    # Primary dry forest
+                           np.array([108, 169, 102, 255]) / 255,    # Secondary forest
+                           np.array([174, 114, 41, 255]) / 255,     # Shrub/Grass
+                           np.array([72, 109, 162, 255]) / 255,     # Water
+                           np.array([200, 230, 248, 255]) / 255,    # Wetland
+                           np.array([179, 175, 164, 255]) / 255,    # Other
                            ])
 
     vmin, vmax = 1, len(landcover_system)
@@ -615,14 +688,9 @@ def land_cover_plot(img_plot, title='', figsize=(16, 9.5), landcover_system=None
 
 if __name__ == "__main__":
 
-    post_processing_flag = 0
-    landcover_version = 'v2'
+    post_processing_flag = 1
+    landcover_version = 'v7'
     tilename = 'h05v02'
-
-    # list_blockname = ['row1000col0000', 'row1000col0250', 'row1000col0500',
-    #                   'row1250col0000', 'row1250col0250', 'row1250col0500']
-    # for blockname in list_blockname:
-
     blockname = 'row1000col0000'
 
     if post_processing_flag == 0:
@@ -646,7 +714,7 @@ if __name__ == "__main__":
     logging.info('land cover output version {}'.format(landcover_version))
 
     # read pre-trained random forest classifier
-    output_name_rf = join(rootpath, 'data', 'random_forest_model', 'rf_classifier_i01.joblib')
+    output_name_rf = join(rootpath, 'results', 'rf_output', 'rf_classifier_i01.joblib')
     rf_classifier = joblib.load(output_name_rf)
 
     img_dem_block, img_slope_block, img_aspect_block = read_dem(tilename, blockname)  # read topography information
@@ -664,12 +732,11 @@ if __name__ == "__main__":
     # fill the missing values
     img_lcmap_fill = landcover_fill(img_lcmap_eachblock)
 
-    # merge secondary wet and secondary dry forests to secondary forest
+    # merge secondary wet and secondary dry forests; merge barren and cropland to other
     img_lcmap_merge = landcover_merge(img_lcmap_fill)
 
     # output the land cover map
-    landcover_output(img_lcmap_merge, tilename, blockname, src_geotrans, src_proj, output_path)
+    output_filename = landcover_output(img_lcmap_merge, tilename, blockname, src_geotrans, src_proj, output_path)
 
     # plot the land cover
     land_cover_plot(img_lcmap_merge[-1], title='land cover in 2022')
-
