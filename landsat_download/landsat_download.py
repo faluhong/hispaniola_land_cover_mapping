@@ -28,7 +28,7 @@ sys.path.append(path_pythoncode)
 
 # USGS account, you can replace with your own username and password
 # Remember to request the access from USGU: https://ers.cr.usgs.gov/profile/access
-username, password = 'falu_hong', 'University4.'
+username, password = 'falu_hong', '********'
 
 # Initialize a new API instance and get an access key
 api = API(username, password)
