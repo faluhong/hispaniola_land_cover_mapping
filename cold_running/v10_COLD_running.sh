@@ -17,4 +17,4 @@ conda activate py38
 
 cd /scratch/zhz18039/fah20002/LCM_diversity/pythoncode/COLD/
 
-python3 v10_COLD_running.py   --n_cores=$SLURM_ARRAY_TASK_MAX  --rank=$SLURM_ARRAY_TASK_ID  --output_foldername='forward_extension_v4'  --rootpath_scratch='/scratch/zhz18039/fah20002/LCM_diversity'  --running_direction='forward'
+python3 v10_COLD_running.py   --n_cores=$SLURM_ARRAY_TASK_MAX  --rank=$SLURM_ARRAY_TASK_ID  --output_foldername='COLD_output_morechange'  --rootpath_scratch='/scratch/zhz18039/fah20002/LCM_diversity'
