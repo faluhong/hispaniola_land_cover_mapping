@@ -39,13 +39,14 @@ def get_x_y_training_withdem(df_selectedsamples):
         df_eachblock = df_selectedsamples[mask_df].copy()
 
         y_data_each_block, list_cold_training = training_sample_preparation_cold_reccg(df_eachblock)
-        array_cold_training_each_block = np.array([list_cold_training]).T[:, 0]
+        if len(y_data_each_block) > 0:
+            array_cold_training_each_block = np.array([list_cold_training]).T[:, 0]
 
-        x_data_each_block = prepare_xdata_with_topography(array_cold_training_each_block,
-                                                         img_dem_block, img_slope_block, img_aspect_block)
+            x_data_each_block = prepare_xdata_with_topography(array_cold_training_each_block,
+                                                             img_dem_block, img_slope_block, img_aspect_block)
 
-        x_training_withdem.append(x_data_each_block)
-        y_training_withdem.append(y_data_each_block)
+            x_training_withdem.append(x_data_each_block)
+            y_training_withdem.append(y_data_each_block)
 
     x_training_withdem = np.concatenate(x_training_withdem, axis=0)
     y_training_withdem = np.concatenate(y_training_withdem, axis=0)
@@ -161,6 +162,7 @@ if __name__ == "__main__":
     sheet_interpretation_sample = pd.read_excel(filename_interpretation_sample, sheet_name='Sheet1')
 
     x_training_with_topography, y_training_with_topography = get_x_y_training_withdem(sheet_interpretation_sample)
+
 
 
 
