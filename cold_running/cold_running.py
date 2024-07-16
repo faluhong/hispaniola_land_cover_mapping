@@ -19,16 +19,12 @@ import sys
 import glob
 import pandas as pd
 from datetime import datetime
-import matplotlib.pyplot as plt
-import click
-from pycold import cold_detect
+from pycold import cold_detect  # pycold is workable on Mac and Linux system. Windows system is not workable at present
 from osgeo import gdal, gdal_array
 import logging
 
 pwd = os.getcwd()
 rootpath = os.path.abspath(os.path.join(pwd, '..'))
-path_pythoncode = join(rootpath, 'pythoncode')
-sys.path.append(path_pythoncode)
 
 NBands, NRow, NCol = 8, 2500, 2500
 Block_Size = 250
