@@ -321,7 +321,7 @@ def main(rank, n_cores, landcover_version, post_processing_flag):
             # output the annual land cover map
             filename_output = mosaic_output(landcover_version, dst_geotrans, dst_proj, img_lcmap_eachyear, year)
 
-            # add pyramids and color table in the mosaiced tif file
+            # add pyramids and color table in the mosaic tif file
             add_pyramids_color_in_lc_tif(filename_output)
 
     else:
