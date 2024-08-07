@@ -230,7 +230,8 @@ def add_pyramids_color_in_lc_tif(filename_tif, list_overview=None):
     if list_overview is None:
         list_overview = [2, 4, 8, 16, 32, 64]
 
-    colors = np.array([np.array([241, 1, 0, 255]),        # Developed
+    colors = np.array([np.array([255, 255, 255, 255]),    # Ocean
+                       np.array([241, 1, 0, 255]),        # Developed
                        np.array([29, 101, 51, 255]),      # Primary wet forest
                        np.array([208, 209, 129, 255]),    # Primary dry forest
                        np.array([108, 169, 102, 255]),    # Secondary forest
@@ -239,6 +240,7 @@ def add_pyramids_color_in_lc_tif(filename_tif, list_overview=None):
                        np.array([200, 230, 248, 255]),    # Wetland
                        np.array([179, 175, 164, 255]),    # Other
                        ])
+
 
     dataset = gdal.Open(filename_tif, gdal.GA_Update)
 
@@ -254,10 +256,8 @@ def add_pyramids_color_in_lc_tif(filename_tif, list_overview=None):
 
     # Set the color for each value in the color table
     for i in range(0, len(colors)):
-        if i == 0:
-            color_table.SetColorEntry(0, (255, 255, 255, 255))
-        else:
-            color_table.SetColorEntry(i, tuple(colors[i - 1]))
+        color = tuple(colors[i])
+        color_table.SetColorEntry(i, color)
 
     # Assign the color table to the band
     band.SetRasterColorTable(color_table)
