@@ -253,7 +253,7 @@ def add_pyramids_color_in_lc_tif(filename_tif, list_overview=None):
     color_table = gdal.ColorTable()
 
     # Set the color for each value in the color table
-    for i in range(0, len(colors)):
+    for i in range(1, 1 + len(colors)):
         if i == 0:
             color_table.SetColorEntry(0, (255, 255, 255, 255))
         else:
