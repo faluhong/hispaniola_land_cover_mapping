@@ -235,7 +235,7 @@ def add_pyramids_color_in_lc_tif(filename_tif, list_overview=None):
                        np.array([208, 209, 129, 255]),    # Primary dry forest
                        np.array([108, 169, 102, 255]),    # Secondary forest
                        np.array([174, 114, 41, 255]),     # Shrub/Grass
-                       np.array([72, 109, 162, 255]) ,     # Water
+                       np.array([72, 109, 162, 255]),     # Water
                        np.array([200, 230, 248, 255]),    # Wetland
                        np.array([179, 175, 164, 255]),    # Other
                        ])
@@ -253,7 +253,7 @@ def add_pyramids_color_in_lc_tif(filename_tif, list_overview=None):
     color_table = gdal.ColorTable()
 
     # Set the color for each value in the color table
-    for i in range(1, 1 + len(colors)):
+    for i in range(0, len(colors)):
         if i == 0:
             color_table.SetColorEntry(0, (255, 255, 255, 255))
         else:
