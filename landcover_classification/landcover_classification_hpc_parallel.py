@@ -173,7 +173,7 @@ def mmu_erosion_process(img_lc, cross=np.ones((3, 3)), connection_structure=gene
 
     pf_mask = (img_lc == 2) | (img_lc == 3)  # extract the primary forest mask
 
-    img_core_pf = erosion(pf_mask, cross)  # get the PF pixels that has the 5X5 core area
+    img_core_pf = erosion(pf_mask, cross)  # get the PF pixels that has the 3X3 core area defined with cross
 
     # using scipy.ndimage.label to get the clustered primary forest
     img_labelled_cluster, num_features = label(pf_mask, structure=connection_structure)  # get the primary forest cluster with each cluster labelled
