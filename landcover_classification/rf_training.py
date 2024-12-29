@@ -1,5 +1,5 @@
 """
-    An example of training the random forest model and land cover classification
+    Train the random forest model for land cover classification
 """
 
 import time
