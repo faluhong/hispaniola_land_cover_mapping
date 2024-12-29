@@ -244,33 +244,8 @@ function addLandCoverSelector(mapToChange, defaultValue, position, title) {
     mapToChange.add(controlPanel);
 }
 
-// Adds a layer selection widget to the reference map, including the Google Earth image and Landsat composite image
-function addRefMapSelector(mapToChange, defaultValue, position, title) {
-    var label = ui.Label('Satellite Image', {fontWeight: 'bold', fontSize: '12px'});
 
-    // This function changes the given map to show the selected image.
-    function updateMap(selection) {
-        if (ee.String(selection).compareTo('Google Earth Image').getInfo() === 0) {
-            mapToChange.layers().set(0);  // Display the default Google Earth Image
-            title.setValue('Google Earth Image');
-        } else {
-            mapToChange.layers().set(0, ui.Map.Layer(images[selection]));
-            title.setValue(selection + ' composite image');
-        }
-    }
-
-    // Configure a selection dropdown to allow the user to choose between images,
-    // and set the map to update when a user makes a selection.
-    var select = ui.Select({items: Object.keys(images), onChange: updateMap});
-    select.setValue(Object.keys(images)[defaultValue], true);
-    select.style({fontWeight: 'bold', fontSize: '10px'});
-
-    var controlPanel = ui.Panel({widgets: [label, select], style: {position: position}});
-
-    mapToChange.add(controlPanel);
-}
-
-// read the post-processed land cover map using 5 pixel as the minimum mapping unit
+// read the land cover map from the Google Earth Engine
 function getLandCoverMap(year) {
     var filenameImage = 'users/gers/Hispaniola/hispaniola_lc_' + year;
     var landCover = ee.Image(filenameImage);
