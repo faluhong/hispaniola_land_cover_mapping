@@ -1,5 +1,7 @@
 """
     example of preparing the training data
+
+    The final training data is in: data/rf_training/x_training_refine_i0.npy and data/rf_training/y_training_refine_i0.npy
 """
 
 import numpy as np
@@ -165,7 +167,7 @@ if __name__ == "__main__":
     print('number of example training sample is {}'.format(len(y_training_with_topography)))
 
     # random forest training. Training 25000 sample takes about 2 minutes
-    from landcover_classification.rf_training_classification import rf_training
+    from landcover_classification.rf_training import rf_training
     rf_classifier = rf_training(x_training_with_topography, y_training_with_topography)
 
 
