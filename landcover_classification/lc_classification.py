@@ -1,8 +1,8 @@
 """
     This code contains the functions describing the workflow of the land cover classification
 
-    Some notes for this code
-    (1) Random forest model is pre-trained from the rf_training_classification.py file
+    Notes for this code
+    (1) Random forest model is pre-trained from the rf_training.py file
     (2) The main function contains the workflow of classifying the land cover for the example block
     (3) Minimum Mapping Unit post-processing is not included in this code. The MMU filter process is done after finishing classification for all blocks
 """
@@ -188,7 +188,7 @@ def read_cold_reccg(filename_cold_results):
 
 def prepare_xdata_with_topography(cold_reccg, img_dem_block, img_slope_block, img_aspect_block):
     """
-        prepare the predictor variables incorporating COLD coefficient and topography information (elevation, slope, and aspect information)
+        prepare the predictor variables incorporating COLD coefficients and topography information (elevation, slope, and aspect information)
         The structure of the predictor variables includes
         (1) central overall surface reflectance of the temporal segment
         (2) slope
@@ -237,6 +237,27 @@ def prepare_xdata_with_topography(cold_reccg, img_dem_block, img_slope_block, im
 
 def land_cover_classification(rf_classifier, cold_block, img_dem_block, img_slope_block, img_aspect_block, post_processing_flag,
                               output_path, tilename, blockname):
+    """
+        classify the land cover for each block
+        (1) prepare the predictor variables
+        (2) predict the land cover using random forest
+        (3) refine the classification results
+        (4) output the classification results
+
+    Args:
+        rf_classifier:
+        cold_block:
+        img_dem_block:
+        img_slope_block:
+        img_aspect_block:
+        post_processing_flag:
+        output_path:
+        tilename:
+        blockname:
+
+    Returns:
+
+    """
     if len(cold_block) == 0:
         logging.info('no available valid data for tile: {} block: {}'.format(tilename, blockname))
     else:
@@ -260,7 +281,6 @@ def land_cover_classification(rf_classifier, cold_block, img_dem_block, img_slop
                     pass
                 else:
                     y_prediction = post_processing(y_prediction, y_prediction_prob, cold_block, pos_id, rule_specific_year=1996)
-                    # y_prediction = post_processing(y_prediction, y_prediction_prob, location_pos, location_t_end, location_t_start)
 
         # prepare the dataset to output the classification results
         array_t_start = cold_block['t_start']
@@ -288,7 +308,7 @@ def land_cover_classification(rf_classifier, cold_block, img_dem_block, img_slop
 
 def standard_CCD(time_series, parameter):
     """
-        the
+        code to get the COLD fitting curve
 
     Args:
         time_series: time series of array datenum
