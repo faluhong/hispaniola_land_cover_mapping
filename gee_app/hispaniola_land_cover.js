@@ -161,9 +161,9 @@ toolPanel.add(sourceDataDownload);
 // add the reference paper panel
 var sourceRefPaperHeader = ui.Label('Reference paper', {fontSize: '12px', fontWeight: 'bold'});
 var sourceRefPaperText = ui.Label(
-    'Falu Hong, S. Blair Hedges, Zhiqiang Yang, Ji Won Suh, Shi Qiu, Joel Timyan, and Zhe Zhu. Decoding primary forest changes in Haiti and the Dominican Republic using Landsat time series (Under Review)',
+    'Falu Hong, S. Blair Hedges, Zhiqiang Yang, Ji Won Suh, Shi Qiu, Joel Timyan, and Zhe Zhu. Decoding primary forest changes in Haiti and the Dominican Republic using Landsat time series. Remote Sensing of Environment, 318, 114590',
     {fontSize: '12px'});
-// sourceRefPaperText.setUrl('https://doi.org/10.6084/m9.figshare.28100408');
+sourceRefPaperText.setUrl('https://www.sciencedirect.com/science/article/pii/S0034425724006163');
 var sourceRefPaper = ui.Panel([sourceRefPaperHeader, sourceRefPaperText], 'flow', {fontWeight: 'bold', fontSize: '12px', width: '300px'});
 toolPanel.add(sourceRefPaper);
 
