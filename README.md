@@ -12,12 +12,15 @@ The land cover types include:
 (6) Water
 (7) Wetland
 (8) Other
+
+Flowchart of land cover (including primary forest) map generation in Haiti and the Dominican Republic.
+![img.jpg](image/flowchart.jpg)
   
 The generated land cover map can be downloaded from: https://doi.org/10.6084/m9.figshare.28100408
 
 Interactive map are available at Google Earth Engine APP at: https://gers.users.earthengine.app/view/hispaniola-lc
 
-[![img.png](image/GEE_ui.png)](https://gers.users.earthengine.app/view/hispaniola-lc)
+[![img.jpg](image/gee_ui.jpg)](https://gers.users.earthengine.app/view/hispaniola-lc)
 
 Reference:
-Falu Hong, S. Blair Hedges, Zhiqiang Yang, Ji Won Suh, Shi Qiu, Joel Timyan, and Zhe Zhu. Decoding primary forest changes in Haiti and the Dominican Republic using Landsat time series (Under Review).
+Falu Hong, S. Blair Hedges, Zhiqiang Yang, Ji Won Suh, Shi Qiu, Joel Timyan, and Zhe Zhu. [Decoding primary forest changes in Haiti and the Dominican Republic using Landsat time series](https://www.sciencedirect.com/science/article/pii/S0034425724006163). _Remote Sensing of Environment_, 318, 114590
